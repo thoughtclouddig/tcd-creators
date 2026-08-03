@@ -3,9 +3,6 @@ modules = ["nodejs-20", "web"]
 run = "cd bd-platform && npm install && npm run dashboard"
 entrypoint = "bd-platform/src/server/index.ts"
 
-[env]
-NODE_ENV = "production"
-
 [nix]
 channel = "stable-25_05"
 
