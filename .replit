@@ -38,6 +38,6 @@ args = "cd bd-platform && npm install --include=dev && PORT=5000 ./node_modules/
 waitForPort = 5000
 
 [deployment]
-deploymentTarget = "gce"
+deploymentTarget = "vm"
 build = ["npm", "install"]
 run = ["sh", "-c", "cd bd-platform && node_modules/.bin/tsx src/server/index.ts"]
