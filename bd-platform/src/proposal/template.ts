@@ -282,8 +282,8 @@ function firstName(name: string): string {
   return name.split(" ")[0] ?? name;
 }
 
-function escapeHtml(s: string): string {
-  return s
+function escapeHtml(s: string | null | undefined): string {
+  return (s ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")

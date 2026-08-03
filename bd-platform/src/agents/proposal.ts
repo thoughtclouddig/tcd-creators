@@ -177,7 +177,7 @@ function collectTopRecommendations(
     const row = byAgent[agent];
     if (!row) continue;
     const recs = JSON.parse(row.recommendations_json || "[]") as ProposalRecommendation[];
-    all.push(...recs);
+    all.push(...recs.filter((r) => r && r.title && r.detail));
   }
   return all.slice(0, 6);
 }
