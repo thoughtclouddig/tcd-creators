@@ -1,6 +1,6 @@
 run = "cd bd-platform && npm install --include=dev && PORT=5000 ./node_modules/.bin/tsx src/server/index.ts"
 entrypoint = "src/server/index.ts"
-modules = ["nodejs-24", "python-3.11"]
+modules = ["nodejs-24", "python-3.11", "postgresql-16"]
 
 [nix]
 channel = "stable-24_05"
@@ -12,6 +12,18 @@ externalPort = 3000
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 5050
+externalPort = 3002
+
+[[ports]]
+localPort = 5051
+externalPort = 3003
+
+[[ports]]
+localPort = 5052
+externalPort = 4200
 
 [workflows]
 runButton = "Project"

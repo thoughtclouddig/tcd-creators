@@ -1,6 +1,6 @@
 # ThoughtCloud Digital — BD Platform
 
-An autonomous business-development platform: 14 AI agents that discover a creator, audit their business across 7 dimensions, score the opportunity, generate an executive proposal, and draft personalized outreach — all backed by a local SQLite database.
+An autonomous business-development platform: 14 AI agents that discover a creator, audit their business across 7 dimensions, score the opportunity, generate an executive proposal, and draft personalized outreach — all backed by Replit's built-in PostgreSQL database.
 
 ## How to run
 
@@ -31,19 +31,19 @@ npm run pipeline -- --name "Creator Name" --website "https://example.com" \
 
 ## Data
 
-SQLite database lives at `bd-platform/data/tcd.db` — no external database needed.
+Replit's built-in PostgreSQL database (connection via `DATABASE_URL`, provided automatically in both development and production). The schema in `bd-platform/src/db/schema.sql` is applied idempotently at startup by `initDb()` (called from `src/server/index.ts` and `src/pipeline/cli.ts`). Data persists across republishes — this was the reason for migrating off SQLite (August 2026).
 
 ## Notes on the environment
 
-- `NODE_ENV=production` is set globally in `.replit` — always use `npm install --include=dev` to get `tsx` and other devDependencies.
-- `better-sqlite3` is a native module. Python 3.11 is installed (via Nix) to allow node-gyp to compile it against the current Node.js version. If it ever fails with `ERR_DLOPEN_FAILED`, run `cd bd-platform && npm rebuild better-sqlite3`.
+- `NODE_ENV=production` is set globally in `.replit` — always use `npm install --include=dev` to get devDependencies. (`tsx` itself is a regular dependency since production runs it directly.)
+- All DB access goes through `bd-platform/src/db/repo.ts` (async, `pg` Pool). Route handlers and agents must `await` repo calls.
 
 ## Stack
 
 - **Runtime**: Node.js + TypeScript (`tsx` for dev)
 - **Framework**: Express + EJS templates
 - **AI**: Anthropic Claude (`@anthropic-ai/sdk`)
-- **DB**: SQLite via `better-sqlite3`
+- **DB**: PostgreSQL (Replit built-in) via `pg`
 - **External APIs**: YouTube Data API v3, Spotify (client-credentials), RSS/web scraping
 
 ## User preferences

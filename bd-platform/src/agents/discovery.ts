@@ -30,7 +30,7 @@ export async function runDiscovery(seed: CreatorSeed): Promise<DiscoveryOutcome>
   const warnings: string[] = [];
   const sourcesUsed: string[] = ["manual"];
 
-  let creator = upsertCreator(seed);
+  let creator = await upsertCreator(seed);
 
   // ---- YouTube ----
   if (process.env.YOUTUBE_API_KEY && (seed.youtube_channel_id || seed.youtube_handle)) {
@@ -44,7 +44,7 @@ export async function runDiscovery(seed: CreatorSeed): Promise<DiscoveryOutcome>
         });
         const ch = data.items?.[0];
         if (ch?.statistics) {
-          updateCreatorAudienceFields(creator.id, {
+          await updateCreatorAudienceFields(creator.id, {
             subscribers: Number(ch.statistics.subscriberCount ?? 0) || undefined,
             avg_views: undefined, // computed properly in Agent 2 from recent uploads
             source: "youtube",
@@ -96,7 +96,7 @@ export async function runDiscovery(seed: CreatorSeed): Promise<DiscoveryOutcome>
     }
   }
 
-  creator = getCreatorByName(seed.name)!;
+  creator = (await getCreatorByName(seed.name))!;
   return { creator, sources_used: sourcesUsed, warnings };
 }
 

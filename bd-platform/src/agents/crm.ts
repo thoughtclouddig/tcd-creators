@@ -14,18 +14,18 @@ const PRIORITY_CLOSE_PROBABILITY: Record<string, number> = {
   Low: 5,
 };
 
-export function runCrmInit(creatorId: number) {
-  ensureCrmRow(creatorId);
-  const score = latestOpportunityScore(creatorId);
+export async function runCrmInit(creatorId: number) {
+  await ensureCrmRow(creatorId);
+  const score = await latestOpportunityScore(creatorId);
   if (score) {
     const opportunityValue = parseRevenueMidpoint(score.estimated_revenue_opportunity);
-    updateCrm(creatorId, {
+    await updateCrm(creatorId, {
       status: "contacted",
       opportunity_value_usd: opportunityValue ?? undefined,
       close_probability_pct: PRIORITY_CLOSE_PROBABILITY[score.priority] ?? 10,
     });
   }
-  return getCrm(creatorId);
+  return await getCrm(creatorId);
 }
 
 function parseRevenueMidpoint(range: string): number | undefined {

@@ -42,16 +42,16 @@ export async function runCreatorPipeline(seed: CreatorSeed): Promise<PipelineRes
   const { creator, warnings: discoveryWarnings } = await runDiscovery(seed);
   discoveryWarnings.forEach((w) => warnings.push(`[discovery] ${w}`));
 
-  const runId = startPipelineRun(creator.id);
+  const runId = await startPipelineRun(creator.id);
   const step = async (label: string, fn: () => Promise<unknown> | unknown) => {
     try {
-      logPipelineStep(runId, `${label}: started`);
+      await logPipelineStep(runId, `${label}: started`);
       await fn();
-      logPipelineStep(runId, `${label}: done`);
+      await logPipelineStep(runId, `${label}: done`);
     } catch (err: any) {
       const msg = `${label} failed: ${err.message}`;
       warnings.push(msg);
-      logPipelineStep(runId, msg);
+      await logPipelineStep(runId, msg);
     }
   };
 
@@ -63,9 +63,7 @@ export async function runCreatorPipeline(seed: CreatorSeed): Promise<PipelineRes
   await step("Agent 7 — Community", () => runCommunityAudit(creator.id));
   await step("Agent 8 — AI Opportunity", () => runAiOpportunityAudit(creator.id));
   await step("Agent 9 — TopFan Fit", () => runTopFanAudit(creator.id)); // after ownership/community/merch
-  await step("Agent 10 — Opportunity Scoring", () => {
-    runOpportunityScoring(creator.id);
-  });
+  await step("Agent 10 — Opportunity Scoring", () => runOpportunityScoring(creator.id));
 
   let proposalPath: string | undefined;
   await step("Agent 11 — Executive Proposal", async () => {
@@ -79,9 +77,7 @@ export async function runCreatorPipeline(seed: CreatorSeed): Promise<PipelineRes
     outreachEmailBody = outcome.emailBody;
   });
 
-  await step("Agent 13 — CRM Init", () => {
-    runCrmInit(creator.id);
-  });
+  await step("Agent 13 — CRM Init", () => runCrmInit(creator.id));
 
   await step("Agent 14 — Follow-up Scheduler", async () => {
     if (outreachEmailBody) {
@@ -93,7 +89,7 @@ export async function runCreatorPipeline(seed: CreatorSeed): Promise<PipelineRes
 
   const status: PipelineResult["status"] =
     warnings.length === 0 ? "completed" : "completed_with_warnings";
-  finishPipelineRun(runId, warnings.length > 0 && !proposalPath ? "failed" : "completed");
+  await finishPipelineRun(runId, warnings.length > 0 && !proposalPath ? "failed" : "completed");
 
   return { creatorId: creator.id, runId, status, warnings, proposalPath };
 }

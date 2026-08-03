@@ -1,16 +1,26 @@
-import Database from "better-sqlite3";
+import pg from "pg";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const dbPath = process.env.DATABASE_PATH || "./data/tcd.db";
-fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL is not set — the PostgreSQL database is required.");
+}
 
-export const db = new Database(dbPath);
-db.pragma("journal_mode = WAL");
-db.pragma("foreign_keys = ON");
+export const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 
-const schema = fs.readFileSync(path.join(__dirname, "schema.sql"), "utf-8");
-db.exec(schema);
+export async function query(text: string, params?: unknown[]) {
+  return pool.query(text, params);
+}
+
+let initialized: Promise<void> | null = null;
+
+export function initDb(): Promise<void> {
+  if (!initialized) {
+    const schema = fs.readFileSync(path.join(__dirname, "schema.sql"), "utf-8");
+    initialized = pool.query(schema).then(() => undefined);
+  }
+  return initialized;
+}

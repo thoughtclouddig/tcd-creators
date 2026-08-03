@@ -16,7 +16,7 @@ import {
   listPipeline,
   recentPipelineRuns,
 } from "../db/repo.js";
-import { db } from "../db/client.js";
+import { initDb, query } from "../db/client.js";
 import { runCreatorPipeline } from "../pipeline/runCreatorPipeline.js";
 import type { AuditAgent, CreatorSeed } from "../types.js";
 
@@ -40,14 +40,19 @@ const AGENT_LABELS: Record<AuditAgent, string> = {
 
 // ---------- Home ----------
 
-app.get("/", (_req, res) => {
-  const creators = listCreators();
+app.get("/", async (_req, res) => {
+  const creators = await listCreators();
   const today = new Date().toISOString().slice(0, 10);
-  const discoveredToday = creators.filter((c) => c.discovered_at?.startsWith(today)).length;
+  const discoveredToday = creators.filter((c) => {
+    if (!c.discovered_at) return false;
+    return new Date(c.discovered_at).toISOString().slice(0, 10) === today;
+  }).length;
 
-  const scored = creators
-    .map((c) => ({ creator: c, score: latestOpportunityScore(c.id) }))
-    .filter((x) => x.score);
+  const scored = (
+    await Promise.all(
+      creators.map(async (c) => ({ creator: c, score: await latestOpportunityScore(c.id) }))
+    )
+  ).filter((x) => x.score);
 
   const topOpportunities = scored
     .sort((a, b) => b.score.overall_score - a.score.overall_score)
@@ -56,11 +61,11 @@ app.get("/", (_req, res) => {
 
   const highPriority = scored.filter((x) => x.score.priority === "High").length;
 
-  const proposals = db
-    .prepare(`SELECT * FROM proposals ORDER BY created_at DESC LIMIT 8`)
-    .all() as any[];
+  const proposals = (
+    await query(`SELECT * FROM proposals ORDER BY created_at DESC LIMIT 8`)
+  ).rows as any[];
 
-  const pipelineRows = listPipeline();
+  const pipelineRows = await listPipeline();
   const pipelineValueK = Math.round(
     pipelineRows.reduce((sum, r) => sum + (r.opportunity_value_usd || 0), 0) / 1000
   );
@@ -82,12 +87,14 @@ app.get("/", (_req, res) => {
 
 // ---------- Pipeline / CRM ----------
 
-app.get("/pipeline", (_req, res) => {
-  const rows = listPipeline().map((r) => ({
-    ...r,
-    followUpCount: listFollowUps(r.id).length,
-  }));
-  const runs = recentPipelineRuns(20);
+app.get("/pipeline", async (_req, res) => {
+  const rows = await Promise.all(
+    (await listPipeline()).map(async (r) => ({
+      ...r,
+      followUpCount: (await listFollowUps(r.id)).length,
+    }))
+  );
+  const runs = await recentPipelineRuns(20);
   res.render("pipeline", { rows, runs });
 });
 
@@ -127,20 +134,20 @@ app.post("/discover", (req, res) => {
 
 // ---------- Creator detail ----------
 
-app.get("/creators/:id", (req, res) => {
+app.get("/creators/:id", async (req, res) => {
   const id = Number(req.params.id);
-  const creator = getCreator(id);
+  const creator = await getCreator(id);
   if (!creator) {
     res.status(404).send("Creator not found");
     return;
   }
 
-  const score = latestOpportunityScore(id);
-  const snapshot = latestSnapshot(id);
-  const proposal = latestProposal(id);
-  const crm = getCrm(id);
+  const score = await latestOpportunityScore(id);
+  const snapshot = await latestSnapshot(id);
+  const proposal = await latestProposal(id);
+  const crm = await getCrm(id);
 
-  const audits = allLatestAudits(id).map((a) => ({
+  const audits = (await allLatestAudits(id)).map((a) => ({
     agent: a.agent,
     label: AGENT_LABELS[a.agent as AuditAgent] ?? a.agent,
     score: a.score,
@@ -149,8 +156,8 @@ app.get("/creators/:id", (req, res) => {
     findings: JSON.parse(a.findings_json || "[]"),
   }));
 
-  const outreach = listOutreach(id);
-  const followUps = listFollowUps(id);
+  const outreach = await listOutreach(id);
+  const followUps = await listFollowUps(id);
 
   res.render("creator", {
     creator,
@@ -164,9 +171,9 @@ app.get("/creators/:id", (req, res) => {
   });
 });
 
-app.get("/creators/:id/proposal", (req, res) => {
+app.get("/creators/:id/proposal", async (req, res) => {
   const id = Number(req.params.id);
-  const proposal = latestProposal(id);
+  const proposal = await latestProposal(id);
   if (!proposal?.html_path || !fs.existsSync(proposal.html_path)) {
     res.status(404).send("No proposal generated for this creator yet.");
     return;
@@ -175,6 +182,7 @@ app.get("/creators/:id/proposal", (req, res) => {
 });
 
 const PORT = Number(process.env.PORT || 3000);
-app.listen(PORT, () => {
+await initDb();
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`ThoughtCloud Digital BD dashboard running at http://localhost:${PORT}`);
 });

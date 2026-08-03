@@ -21,7 +21,7 @@ export interface AuditContext {
   creatorName: string;
   website: string | null;
   site: SiteSnapshot | null;
-  audience: ReturnType<typeof latestSnapshot>;
+  audience: Awaited<ReturnType<typeof latestSnapshot>>;
   priorFindings: Record<string, unknown>;
 }
 
@@ -32,7 +32,7 @@ export async function runGenericAudit(
   buildPrompt: (ctx: AuditContext) => string,
   opts: { needsSite?: boolean; needsPriorAgents?: AuditAgent[] } = {}
 ): Promise<AuditResult> {
-  const creator = getCreator(creatorId);
+  const creator = await getCreator(creatorId);
   if (!creator) throw new Error(`Creator ${creatorId} not found`);
 
   const site =
@@ -42,7 +42,7 @@ export async function runGenericAudit(
 
   const priorFindings: Record<string, unknown> = {};
   for (const priorAgent of opts.needsPriorAgents ?? []) {
-    const row = latestAudit(creatorId, priorAgent);
+    const row = await latestAudit(creatorId, priorAgent);
     if (row) priorFindings[priorAgent] = JSON.parse(row.findings_json || "[]");
   }
 
@@ -50,7 +50,7 @@ export async function runGenericAudit(
     creatorName: creator.name,
     website: creator.website,
     site,
-    audience: latestSnapshot(creatorId),
+    audience: await latestSnapshot(creatorId),
     priorFindings,
   };
 
@@ -72,7 +72,7 @@ export async function runGenericAudit(
     raw: { context_used: { hadSite: !!site, hadAudience: !!ctx.audience } },
   };
 
-  saveAudit(creatorId, result);
+  await saveAudit(creatorId, result);
   return result;
 }
 
@@ -93,7 +93,7 @@ ${site.bodyTextSample.slice(0, 2500) || "(none extracted)"}
 """`.trim();
 }
 
-export function audienceEvidenceBlock(audience: ReturnType<typeof latestSnapshot>): string {
+export function audienceEvidenceBlock(audience: Awaited<ReturnType<typeof latestSnapshot>>): string {
   if (!audience) return "No audience intelligence snapshot yet.";
   return `Subscribers: ${audience.subscribers ?? "unknown"}, avg views: ${audience.avg_views ?? "unknown"}, posting frequency/wk: ${audience.posting_frequency_per_week ?? "unknown"}, engagement rate: ${audience.engagement_rate ?? "unknown"}, momentum score: ${audience.momentum_score ?? "unknown"}/100.`;
 }
