@@ -1,0 +1,12 @@
+run = "npm install && npm run dashboard"
+entrypoint = "src/server/index.ts"
+
+[env]
+NODE_ENV = "production"
+
+[nix]
+channel = "stable-24_05"
+
+[[ports]]
+localPort = 3000
+externalPort = 80

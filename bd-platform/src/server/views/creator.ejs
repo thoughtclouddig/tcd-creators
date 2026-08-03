@@ -1,0 +1,104 @@
+<!doctype html>
+<html>
+<head><%- include('partials/head', { title: creator.name }) %></head>
+<body>
+<%- include('partials/topbar', { active: '' }) %>
+
+<main class="wrap">
+  <div class="hero">
+    <div>
+      <div class="kicker"><%= creator.source %> · discovered <%= creator.discovered_at %></div>
+      <h1><%= creator.name %></h1>
+      <% if (creator.website) { %><p class="muted"><a href="<%= creator.website %>" target="_blank" style="color:var(--accent)"><%= creator.website %></a></p><% } %>
+    </div>
+    <% if (score) { %>
+    <div class="score-big">
+      <div class="num"><%= score.overall_score %></div>
+      <div class="lbl"><%= score.priority %> Priority · TopFan <%= score.topfan_fit_score %>/100</div>
+    </div>
+    <% } %>
+  </div>
+
+  <% if (proposal) { %>
+  <div style="margin-bottom:48px">
+    <a class="proposal-link" href="/creators/<%= creator.id %>/proposal" target="_blank">Open Executive Proposal →</a>
+  </div>
+  <% } %>
+
+  <% if (snapshot) { %>
+  <div class="section" style="margin-top:0">
+    <div class="section-head"><h2>Audience Intelligence</h2></div>
+    <div class="grid grid-4">
+      <div class="card stat-card"><span class="kicker">Subscribers</span><div class="stat-value" style="font-size:1.8rem"><%= snapshot.subscribers ?? '—' %></div></div>
+      <div class="card stat-card"><span class="kicker">Avg Views</span><div class="stat-value" style="font-size:1.8rem"><%= snapshot.avg_views ?? '—' %></div></div>
+      <div class="card stat-card"><span class="kicker">Posting Freq / wk</span><div class="stat-value" style="font-size:1.8rem"><%= snapshot.posting_frequency_per_week ?? '—' %></div></div>
+      <div class="card stat-card"><span class="kicker">Momentum</span><div class="stat-value" style="font-size:1.8rem"><%= snapshot.momentum_score ?? '—' %></div></div>
+    </div>
+  </div>
+  <% } %>
+
+  <div class="section">
+    <div class="section-head"><h2>Audits</h2></div>
+    <div class="grid grid-3">
+      <% audits.forEach(function(a) { %>
+      <div class="card audit-card">
+        <h3><%= a.label %> <span class="score"><%= Math.round(a.score) %><%= a.grade ? ' · ' + a.grade : '' %></span></h3>
+        <p><%= a.summary %></p>
+        <ul>
+          <% a.findings.slice(0,3).forEach(function(f) { %>
+            <li><strong style="color:var(--ink-soft)"><%= f.label %>:</strong> <%= f.detail %></li>
+          <% }) %>
+        </ul>
+      </div>
+      <% }) %>
+    </div>
+  </div>
+
+  <% if (outreach.length) { %>
+  <div class="section">
+    <div class="section-head"><h2>Outreach Drafts</h2></div>
+    <div class="card">
+      <% outreach.forEach(function(o) { %>
+      <div class="outreach-block">
+        <span class="chan"><%= o.channel %></span>
+        <% if (o.subject) { %><div class="subject"><%= o.subject %></div><% } %>
+        <div class="body"><%= o.body %></div>
+      </div>
+      <% }) %>
+    </div>
+  </div>
+  <% } %>
+
+  <% if (followUps.length) { %>
+  <div class="section">
+    <div class="section-head"><h2>Scheduled Follow-ups</h2></div>
+    <table>
+      <thead><tr><th>Day</th><th>Scheduled</th><th>Status</th><th>Preview</th></tr></thead>
+      <tbody>
+        <% followUps.forEach(function(f) { %>
+        <tr>
+          <td class="muted">Day <%= f.day_offset %></td>
+          <td class="muted"><%= f.scheduled_date %></td>
+          <td><span class="badge badge-status"><%= f.status %></span></td>
+          <td class="muted"><%= f.body.slice(0, 90) %>…</td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+
+  <% if (crm) { %>
+  <div class="section">
+    <div class="section-head"><h2>CRM</h2></div>
+    <div class="grid grid-3">
+      <div class="card stat-card"><span class="kicker">Status</span><div class="stat-value" style="font-size:1.6rem;font-family:var(--mono);color:var(--accent)"><%= crm.status %></div></div>
+      <div class="card stat-card"><span class="kicker">Opportunity Value</span><div class="stat-value" style="font-size:1.8rem"><%= crm.opportunity_value_usd ? ('$' + Number(crm.opportunity_value_usd).toLocaleString()) : '—' %></div></div>
+      <div class="card stat-card"><span class="kicker">Close Probability</span><div class="stat-value" style="font-size:1.8rem"><%= crm.close_probability_pct ?? '—' %>%</div></div>
+    </div>
+  </div>
+  <% } %>
+
+</main>
+</body>
+</html>

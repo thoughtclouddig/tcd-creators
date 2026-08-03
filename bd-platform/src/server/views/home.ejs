@@ -1,0 +1,101 @@
+<!doctype html>
+<html>
+<head><%- include('partials/head', { title: 'Dashboard' }) %></head>
+<body>
+<%- include('partials/topbar', { active: 'home' }) %>
+
+<main class="wrap">
+  <div class="page-head">
+    <div class="kicker">Operating System</div>
+    <h1>Good morning.</h1>
+    <p>New creators discovered, opportunities scored, and outreach drafted overnight — reviewed in one pass.</p>
+  </div>
+
+  <div class="grid grid-4">
+    <div class="card stat-card">
+      <span class="kicker">Creators Tracked</span>
+      <div class="stat-value"><%= stats.totalCreators %></div>
+      <div class="stat-sub"><%= stats.discoveredToday %> discovered today</div>
+    </div>
+    <div class="card stat-card">
+      <span class="kicker">High Priority</span>
+      <div class="stat-value"><%= stats.highPriority %></div>
+      <div class="stat-sub">score ≥ 75</div>
+    </div>
+    <div class="card stat-card">
+      <span class="kicker">Proposals Ready</span>
+      <div class="stat-value"><%= stats.proposalsGenerated %></div>
+      <div class="stat-sub">HTML + Markdown exported</div>
+    </div>
+    <div class="card stat-card">
+      <span class="kicker">Revenue Pipeline</span>
+      <div class="stat-value">$<%= stats.pipelineValueK %>k</div>
+      <div class="stat-sub"><%= stats.activeInPipeline %> active opportunities</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <h2>Top Opportunities</h2>
+      <a class="see-all" href="/pipeline">View pipeline →</a>
+    </div>
+    <% if (topOpportunities.length === 0) { %>
+      <div class="empty">No opportunities scored yet. Run the pipeline for a creator to populate this.</div>
+    <% } else { %>
+    <table>
+      <thead><tr><th>Creator</th><th>Score</th><th>Priority</th><th>TopFan Fit</th><th>Est. Opportunity</th><th></th></tr></thead>
+      <tbody>
+        <% topOpportunities.forEach(function(c) { %>
+        <tr>
+          <td class="name-cell"><%= c.name %></td>
+          <td class="score-pill"><b><%= c.overall_score %></b>/100</td>
+          <td><span class="badge badge-<%= c.priority.toLowerCase() %>"><%= c.priority %></span></td>
+          <td class="muted"><%= c.topfan_fit_score %>/100</td>
+          <td class="muted"><%= c.estimated_revenue_opportunity %></td>
+          <td><a class="see-all" href="/creators/<%= c.id %>">View →</a></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <% } %>
+  </div>
+
+  <div class="section grid grid-2">
+    <div>
+      <div class="section-head"><h2>Recent Reports</h2></div>
+      <% if (recentReports.length === 0) { %>
+        <div class="empty">No proposals generated yet.</div>
+      <% } else { %>
+      <table>
+        <tbody>
+          <% recentReports.forEach(function(p) { %>
+          <tr>
+            <td class="name-cell"><%= p.title %><br><span class="muted" style="font-size:.78rem"><%= p.created_at %></span></td>
+            <td><a class="proposal-link" href="/creators/<%= p.creator_id %>/proposal" target="_blank">View Proposal →</a></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+      <% } %>
+    </div>
+    <div>
+      <div class="section-head"><h2>Recent Discoveries</h2></div>
+      <% if (recentCreators.length === 0) { %>
+        <div class="empty">No creators discovered yet. <a class="see-all" href="/discover">Add one →</a></div>
+      <% } else { %>
+      <table>
+        <tbody>
+          <% recentCreators.forEach(function(c) { %>
+          <tr>
+            <td class="name-cell"><a href="/creators/<%= c.id %>"><%= c.name %></a><br><span class="muted" style="font-size:.78rem"><%= c.source %> · <%= c.discovered_at %></span></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+      <% } %>
+    </div>
+  </div>
+
+</main>
+</body>
+</html>

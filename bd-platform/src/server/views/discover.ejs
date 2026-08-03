@@ -1,0 +1,64 @@
+<!doctype html>
+<html>
+<head><%- include('partials/head', { title: 'Discover' }) %></head>
+<body>
+<%- include('partials/topbar', { active: 'discover' }) %>
+
+<main class="wrap">
+  <div class="page-head">
+    <div class="kicker">Agent 1 — Discovery</div>
+    <h1>Add a creator</h1>
+    <p>Phase 1 intake is curated: seed a creator here and the full 14-agent pipeline runs against them — enrichment, audits, scoring, proposal, and outreach.</p>
+  </div>
+
+  <% if (queued) { %>
+    <div class="card" style="margin-bottom:32px;border-color:rgba(76,141,255,.4)">
+      <span class="kicker">Queued</span>
+      <p style="margin-top:10px;color:var(--ink-soft)">Pipeline running for <strong style="color:var(--ink)"><%= queued %></strong> in the background. This takes a few minutes (14 agents, mostly Claude calls) — refresh the <a class="see-all" href="/pipeline">pipeline page</a> to check progress.</p>
+    </div>
+  <% } %>
+
+  <form class="seed-form" method="POST" action="/discover">
+    <div class="full">
+      <label>Creator / Show Name *</label>
+      <input name="name" required placeholder="Real Baron">
+    </div>
+    <div>
+      <label>Brand</label>
+      <input name="brand" placeholder="Real Baron Podcast">
+    </div>
+    <div>
+      <label>Website</label>
+      <input name="website" placeholder="https://realbaron.com">
+    </div>
+    <div>
+      <label>YouTube handle</label>
+      <input name="youtube_handle" placeholder="realbaronpodcast">
+    </div>
+    <div>
+      <label>YouTube channel ID (optional, overrides handle)</label>
+      <input name="youtube_channel_id" placeholder="UC...">
+    </div>
+    <div>
+      <label>Substack URL</label>
+      <input name="substack_url" placeholder="https://realbaron.substack.com">
+    </div>
+    <div>
+      <label>X handle</label>
+      <input name="x_handle" placeholder="realbaron">
+    </div>
+    <div>
+      <label>Topics (comma separated)</label>
+      <input name="topics" placeholder="politics, constitutional law">
+    </div>
+    <div class="full">
+      <label>Political alignment (descriptive only)</label>
+      <input name="political_alignment" placeholder="e.g. populist-right commentary">
+    </div>
+    <div class="full">
+      <button class="btn" type="submit">Run full pipeline →</button>
+    </div>
+  </form>
+</main>
+</body>
+</html>
