@@ -39,5 +39,5 @@ waitForPort = 5000
 
 [deployment]
 deploymentTarget = "gce"
-build = ["sh", "-c", "cd bd-platform && npm install"]
-run = ["sh", "-c", "cd bd-platform && PORT=5000 npm run dashboard"]
+build = ["npm", "install"]
+run = ["sh", "-c", "cd bd-platform && node_modules/.bin/tsx src/server/index.ts"]
