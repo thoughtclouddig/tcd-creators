@@ -9,6 +9,11 @@ channel = "stable-25_05"
 [agent]
 expertMode = true
 
+[deployment]
+deploymentTarget = "gce"
+build = ["sh", "-c", "cd bd-platform && npm install"]
+run = ["sh", "-c", "cd bd-platform && npm run dashboard"]
+
 [[ports]]
 localPort = 3000
 externalPort = 80
