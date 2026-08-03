@@ -39,13 +39,13 @@ export interface ScoringResult {
   breakdown: OpportunityBreakdown;
 }
 
-export function runOpportunityScoring(creatorId: number): ScoringResult {
-  const creator = getCreator(creatorId);
+export async function runOpportunityScoring(creatorId: number): Promise<ScoringResult> {
+  const creator = await getCreator(creatorId);
   if (!creator) throw new Error(`Creator ${creatorId} not found`);
 
-  const audits = allLatestAudits(creatorId);
+  const audits = await allLatestAudits(creatorId);
   const byAgent = Object.fromEntries(audits.map((a) => [a.agent, a]));
-  const snapshot = latestSnapshot(creatorId);
+  const snapshot = await latestSnapshot(creatorId);
 
   const websiteScore = byAgent.website?.score ?? 50;
   const ownershipScore = byAgent.ownership?.score ?? 50;
@@ -100,7 +100,7 @@ export function runOpportunityScoring(creatorId: number): ScoringResult {
     byAgent.ai_opportunity?.estimated_value_usd,
   ]);
 
-  saveOpportunityScore(
+  await saveOpportunityScore(
     creatorId,
     overallScore,
     priority,

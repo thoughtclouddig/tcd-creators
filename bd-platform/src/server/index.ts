@@ -1,5 +1,6 @@
 import "dotenv/config";
-import express from "express";
+import crypto from "node:crypto";
+import express, { type NextFunction, type Request, type RequestHandler, type Response } from "express";
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -16,7 +17,7 @@ import {
   listPipeline,
   recentPipelineRuns,
 } from "../db/repo.js";
-import { db } from "../db/client.js";
+import { pool } from "../db/client.js";
 import { runCreatorPipeline } from "../pipeline/runCreatorPipeline.js";
 import type { AuditAgent, CreatorSeed } from "../types.js";
 
@@ -25,8 +26,51 @@ const app = express();
 
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
+
+// ---------- Auth ----------
+// Simple HTTP Basic Auth — sufficient for a single-operator internal tool. Required in every
+// environment: without DASHBOARD_USERNAME/PASSWORD set, the app refuses to boot rather than
+// silently serving business data (audits, outreach drafts, CRM) with no protection.
+if (!process.env.DASHBOARD_USERNAME || !process.env.DASHBOARD_PASSWORD) {
+  throw new Error(
+    "DASHBOARD_USERNAME and DASHBOARD_PASSWORD must be set (Replit Secrets, or .env locally) " +
+      "— the dashboard holds real prospect/business data and must not run unprotected."
+  );
+}
+
+function timingSafeEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const header = req.headers.authorization;
+  if (header?.startsWith("Basic ")) {
+    const [user, pass] = Buffer.from(header.slice(6), "base64").toString().split(":");
+    if (
+      timingSafeEqual(user ?? "", process.env.DASHBOARD_USERNAME!) &&
+      timingSafeEqual(pass ?? "", process.env.DASHBOARD_PASSWORD!)
+    ) {
+      next();
+      return;
+    }
+  }
+  res.set("WWW-Authenticate", 'Basic realm="ThoughtCloud Digital"');
+  res.status(401).send("Authentication required.");
+});
+
 app.use(express.static(path.join(__dirname, "public")));
 app.use(express.urlencoded({ extended: true }));
+
+// Async route handlers reject on error rather than throwing synchronously — Express 4 won't
+// route that to error middleware on its own, so every async handler is wrapped to forward it.
+function ah(fn: (req: Request, res: Response) => Promise<void>): RequestHandler {
+  return (req, res, next) => {
+    fn(req, res).catch(next);
+  };
+}
 
 const AGENT_LABELS: Record<AuditAgent, string> = {
   website: "Website",
@@ -40,56 +84,67 @@ const AGENT_LABELS: Record<AuditAgent, string> = {
 
 // ---------- Home ----------
 
-app.get("/", (_req, res) => {
-  const creators = listCreators();
-  const today = new Date().toISOString().slice(0, 10);
-  const discoveredToday = creators.filter((c) => c.discovered_at?.startsWith(today)).length;
+app.get(
+  "/",
+  ah(async (_req, res) => {
+    const creators = await listCreators();
+    const today = new Date().toISOString().slice(0, 10);
+    const discoveredToday = creators.filter((c) => c.discovered_at?.startsWith(today)).length;
 
-  const scored = creators
-    .map((c) => ({ creator: c, score: latestOpportunityScore(c.id) }))
-    .filter((x) => x.score);
+    const scored = (
+      await Promise.all(
+        creators.map(async (c) => ({ creator: c, score: await latestOpportunityScore(c.id) }))
+      )
+    ).filter((x) => x.score);
 
-  const topOpportunities = scored
-    .sort((a, b) => b.score.overall_score - a.score.overall_score)
-    .slice(0, 10)
-    .map((x) => ({ ...x.creator, ...x.score }));
+    const topOpportunities = scored
+      .sort((a, b) => b.score.overall_score - a.score.overall_score)
+      .slice(0, 10)
+      .map((x) => ({ ...x.creator, ...x.score }));
 
-  const highPriority = scored.filter((x) => x.score.priority === "High").length;
+    const highPriority = scored.filter((x) => x.score.priority === "High").length;
 
-  const proposals = db
-    .prepare(`SELECT * FROM proposals ORDER BY created_at DESC LIMIT 8`)
-    .all() as any[];
+    const proposals = (
+      await pool.query(`SELECT * FROM proposals ORDER BY created_at DESC LIMIT 8`)
+    ).rows;
 
-  const pipelineRows = listPipeline();
-  const pipelineValueK = Math.round(
-    pipelineRows.reduce((sum, r) => sum + (r.opportunity_value_usd || 0), 0) / 1000
-  );
+    const pipelineRows = await listPipeline();
+    const pipelineValueK = Math.round(
+      pipelineRows.reduce((sum, r) => sum + (r.opportunity_value_usd || 0), 0) / 1000
+    );
 
-  res.render("home", {
-    stats: {
-      totalCreators: creators.length,
-      discoveredToday,
-      highPriority,
-      proposalsGenerated: proposals.length,
-      pipelineValueK,
-      activeInPipeline: pipelineRows.length,
-    },
-    topOpportunities,
-    recentReports: proposals,
-    recentCreators: creators.slice(0, 8),
-  });
-});
+    res.render("home", {
+      stats: {
+        totalCreators: creators.length,
+        discoveredToday,
+        highPriority,
+        proposalsGenerated: proposals.length,
+        pipelineValueK,
+        activeInPipeline: pipelineRows.length,
+      },
+      topOpportunities,
+      recentReports: proposals,
+      recentCreators: creators.slice(0, 8),
+    });
+  })
+);
 
 // ---------- Pipeline / CRM ----------
 
-app.get("/pipeline", (_req, res) => {
-  const rows = listPipeline().map((r) => ({
-    ...r,
-    followUpCount: listFollowUps(r.id).length,
-  }));
-  const runs = recentPipelineRuns(20);
-  res.render("pipeline", { rows, runs });
-});
+app.get(
+  "/pipeline",
+  ah(async (_req, res) => {
+    const pipelineRows = await listPipeline();
+    const rows = await Promise.all(
+      pipelineRows.map(async (r) => ({
+        ...r,
+        followUpCount: (await listFollowUps(r.id)).length,
+      }))
+    );
+    const runs = await recentPipelineRuns(20);
+    res.render("pipeline", { rows, runs });
+  })
+);
 
 // ---------- Discover ----------
 
@@ -127,51 +182,64 @@ app.post("/discover", (req, res) => {
 
 // ---------- Creator detail ----------
 
-app.get("/creators/:id", (req, res) => {
-  const id = Number(req.params.id);
-  const creator = getCreator(id);
-  if (!creator) {
-    res.status(404).send("Creator not found");
-    return;
-  }
+app.get(
+  "/creators/:id",
+  ah(async (req, res) => {
+    const id = Number(req.params.id);
+    const creator = await getCreator(id);
+    if (!creator) {
+      res.status(404).send("Creator not found");
+      return;
+    }
 
-  const score = latestOpportunityScore(id);
-  const snapshot = latestSnapshot(id);
-  const proposal = latestProposal(id);
-  const crm = getCrm(id);
+    const [score, snapshot, proposal, crm, rawAudits, outreach, followUps] = await Promise.all([
+      latestOpportunityScore(id),
+      latestSnapshot(id),
+      latestProposal(id),
+      getCrm(id),
+      allLatestAudits(id),
+      listOutreach(id),
+      listFollowUps(id),
+    ]);
 
-  const audits = allLatestAudits(id).map((a) => ({
-    agent: a.agent,
-    label: AGENT_LABELS[a.agent as AuditAgent] ?? a.agent,
-    score: a.score,
-    grade: a.grade,
-    summary: a.summary,
-    findings: JSON.parse(a.findings_json || "[]"),
-  }));
+    const audits = rawAudits.map((a) => ({
+      agent: a.agent,
+      label: AGENT_LABELS[a.agent as AuditAgent] ?? a.agent,
+      score: a.score,
+      grade: a.grade,
+      summary: a.summary,
+      findings: JSON.parse(a.findings_json || "[]"),
+    }));
 
-  const outreach = listOutreach(id);
-  const followUps = listFollowUps(id);
+    res.render("creator", {
+      creator,
+      score,
+      snapshot,
+      proposal,
+      crm,
+      audits,
+      outreach,
+      followUps,
+    });
+  })
+);
 
-  res.render("creator", {
-    creator,
-    score,
-    snapshot,
-    proposal,
-    crm,
-    audits,
-    outreach,
-    followUps,
-  });
-});
+app.get(
+  "/creators/:id/proposal",
+  ah(async (req, res) => {
+    const id = Number(req.params.id);
+    const proposal = await latestProposal(id);
+    if (!proposal?.html_path || !fs.existsSync(proposal.html_path)) {
+      res.status(404).send("No proposal generated for this creator yet.");
+      return;
+    }
+    res.sendFile(path.resolve(proposal.html_path));
+  })
+);
 
-app.get("/creators/:id/proposal", (req, res) => {
-  const id = Number(req.params.id);
-  const proposal = latestProposal(id);
-  if (!proposal?.html_path || !fs.existsSync(proposal.html_path)) {
-    res.status(404).send("No proposal generated for this creator yet.");
-    return;
-  }
-  res.sendFile(path.resolve(proposal.html_path));
+app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  console.error("Dashboard route error:", err);
+  res.status(500).send("Something went wrong loading this page — check the server logs.");
 });
 
 const PORT = Number(process.env.PORT || 3000);

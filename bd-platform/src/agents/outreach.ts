@@ -28,13 +28,13 @@ export interface OutreachOutcome {
 }
 
 export async function runOutreachWriter(creatorId: number): Promise<OutreachOutcome> {
-  const creator = getCreator(creatorId);
+  const creator = await getCreator(creatorId);
   if (!creator) throw new Error(`Creator ${creatorId} not found`);
 
   const site = creator.website ? await fetchSiteSnapshot(creator.website) : null;
   const recentVideoTitles = await fetchRecentVideoTitles(creator.youtube_channel_id);
-  const score = latestOpportunityScore(creatorId);
-  const proposal = latestProposal(creatorId);
+  const score = await latestOpportunityScore(creatorId);
+  const proposal = await latestProposal(creatorId);
 
   const payload = await structuredCall<{
     email_subject: string;
@@ -68,14 +68,14 @@ title or a real line from their site). List the specific references you used.
     maxTokens: 1500,
   });
 
-  saveOutreach(creatorId, "email", payload.email_body, {
+  await saveOutreach(creatorId, "email", payload.email_body, {
     subject: payload.email_subject,
     basedOn: payload.specific_references,
   });
-  saveOutreach(creatorId, "linkedin", payload.linkedin_message, {
+  await saveOutreach(creatorId, "linkedin", payload.linkedin_message, {
     basedOn: payload.specific_references,
   });
-  saveOutreach(creatorId, "x_dm", payload.x_dm, {
+  await saveOutreach(creatorId, "x_dm", payload.x_dm, {
     basedOn: payload.specific_references,
   });
 

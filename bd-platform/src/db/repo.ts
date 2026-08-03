@@ -1,4 +1,4 @@
-import { db } from "./client.js";
+import { ensureSchema, pool } from "./client.js";
 import type {
   AuditAgent,
   AuditResult,
@@ -7,41 +7,53 @@ import type {
   OpportunityBreakdown,
 } from "../types.js";
 
+async function query<T = any>(text: string, params: unknown[] = []): Promise<T[]> {
+  await ensureSchema();
+  const res = await pool.query(text, params);
+  return res.rows as T[];
+}
+
+async function one<T = any>(text: string, params: unknown[] = []): Promise<T | undefined> {
+  const rows = await query<T>(text, params);
+  return rows[0];
+}
+
 // ---------- Creators ----------
 
-export function upsertCreator(seed: CreatorSeed): Creator {
-  const existing = db
-    .prepare(`SELECT * FROM creators WHERE name = ?`)
-    .get(seed.name) as Creator | undefined;
+export async function upsertCreator(seed: CreatorSeed): Promise<Creator> {
+  const existing = await getCreatorByName(seed.name);
 
   if (existing) {
-    db.prepare(
-      `UPDATE creators SET brand=?, website=?, youtube_channel_id=?, youtube_handle=?,
-       spotify_show_id=?, substack_url=?, x_handle=?, topics_json=?, political_alignment=?,
-       updated_at=datetime('now') WHERE id=?`
-    ).run(
-      seed.brand ?? existing.brand,
-      seed.website ?? existing.website,
-      seed.youtube_channel_id ?? existing.youtube_channel_id,
-      seed.youtube_handle ?? existing.youtube_handle,
-      seed.spotify_show_id ?? existing.spotify_show_id,
-      seed.substack_url ?? existing.substack_url,
-      seed.x_handle ?? existing.x_handle,
-      JSON.stringify(seed.topics ?? JSON.parse(existing.topics_json || "[]")),
-      seed.political_alignment ?? existing.political_alignment,
-      existing.id
+    await query(
+      `UPDATE creators SET brand=COALESCE($1,brand), website=COALESCE($2,website),
+       youtube_channel_id=COALESCE($3,youtube_channel_id), youtube_handle=COALESCE($4,youtube_handle),
+       spotify_show_id=COALESCE($5,spotify_show_id), substack_url=COALESCE($6,substack_url),
+       x_handle=COALESCE($7,x_handle), topics_json=COALESCE($8,topics_json),
+       political_alignment=COALESCE($9,political_alignment), updated_at=now()
+       WHERE id=$10`,
+      [
+        seed.brand ?? null,
+        seed.website ?? null,
+        seed.youtube_channel_id ?? null,
+        seed.youtube_handle ?? null,
+        seed.spotify_show_id ?? null,
+        seed.substack_url ?? null,
+        seed.x_handle ?? null,
+        seed.topics ? JSON.stringify(seed.topics) : null,
+        seed.political_alignment ?? null,
+        existing.id,
+      ]
     );
-    return getCreator(existing.id)!;
+    return (await getCreator(existing.id))!;
   }
 
-  const info = db
-    .prepare(
-      `INSERT INTO creators
-        (name, brand, website, youtube_channel_id, youtube_handle, spotify_show_id,
-         substack_url, x_handle, topics_json, political_alignment, source)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?)`
-    )
-    .run(
+  const row = await one<{ id: number }>(
+    `INSERT INTO creators
+      (name, brand, website, youtube_channel_id, youtube_handle, spotify_show_id,
+       substack_url, x_handle, topics_json, political_alignment, source)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+     RETURNING id`,
+    [
       seed.name,
       seed.brand ?? null,
       seed.website ?? null,
@@ -52,30 +64,32 @@ export function upsertCreator(seed: CreatorSeed): Creator {
       seed.x_handle ?? null,
       JSON.stringify(seed.topics ?? []),
       seed.political_alignment ?? null,
-      "manual"
-    );
-  return getCreator(Number(info.lastInsertRowid))!;
+      "manual",
+    ]
+  );
+  return (await getCreator(row!.id))!;
 }
 
-export function getCreator(id: number): Creator | undefined {
-  return db.prepare(`SELECT * FROM creators WHERE id = ?`).get(id) as
-    | Creator
-    | undefined;
+export async function getCreator(id: number): Promise<Creator | undefined> {
+  return one<Creator>(`SELECT * FROM creators WHERE id = $1`, [id]);
 }
 
-export function getCreatorByName(name: string): Creator | undefined {
-  return db.prepare(`SELECT * FROM creators WHERE name = ?`).get(name) as
-    | Creator
-    | undefined;
+export async function getCreatorByName(name: string): Promise<Creator | undefined> {
+  return one<Creator>(`SELECT * FROM creators WHERE name = $1`, [name]);
 }
 
-export function listCreators(): Creator[] {
-  return db
-    .prepare(`SELECT * FROM creators ORDER BY discovered_at DESC`)
-    .all() as Creator[];
+export async function listCreators(): Promise<Creator[]> {
+  return query<Creator>(`SELECT * FROM creators ORDER BY discovered_at DESC`);
 }
 
-export function updateCreatorAudienceFields(
+export async function setYoutubeChannelId(id: number, channelId: string): Promise<void> {
+  await query(
+    `UPDATE creators SET youtube_channel_id = $1, updated_at = now() WHERE id = $2`,
+    [channelId, id]
+  );
+}
+
+export async function updateCreatorAudienceFields(
   id: number,
   fields: {
     followers?: number;
@@ -84,29 +98,30 @@ export function updateCreatorAudienceFields(
     growth_pct?: number;
     source?: string;
   }
-) {
-  db.prepare(
+): Promise<void> {
+  await query(
     `UPDATE creators SET
-       followers = COALESCE(?, followers),
-       subscribers = COALESCE(?, subscribers),
-       avg_views = COALESCE(?, avg_views),
-       growth_pct = COALESCE(?, growth_pct),
-       source = COALESCE(?, source),
-       updated_at = datetime('now')
-     WHERE id = ?`
-  ).run(
-    fields.followers ?? null,
-    fields.subscribers ?? null,
-    fields.avg_views ?? null,
-    fields.growth_pct ?? null,
-    fields.source ?? null,
-    id
+       followers = COALESCE($1, followers),
+       subscribers = COALESCE($2, subscribers),
+       avg_views = COALESCE($3, avg_views),
+       growth_pct = COALESCE($4, growth_pct),
+       source = COALESCE($5, source),
+       updated_at = now()
+     WHERE id = $6`,
+    [
+      fields.followers ?? null,
+      fields.subscribers ?? null,
+      fields.avg_views ?? null,
+      fields.growth_pct ?? null,
+      fields.source ?? null,
+      id,
+    ]
   );
 }
 
 // ---------- Audience snapshots ----------
 
-export function insertAudienceSnapshot(
+export async function insertAudienceSnapshot(
   creatorId: number,
   snap: {
     subscribers?: number;
@@ -117,183 +132,170 @@ export function insertAudienceSnapshot(
     momentum_score?: number;
     revenue_signal_notes?: string;
   }
-) {
-  db.prepare(
+): Promise<void> {
+  await query(
     `INSERT INTO audience_snapshots
       (creator_id, subscribers, avg_views, posting_frequency_per_week,
        engagement_rate, estimated_monthly_views, momentum_score, revenue_signal_notes)
-     VALUES (?,?,?,?,?,?,?,?)`
-  ).run(
-    creatorId,
-    snap.subscribers ?? null,
-    snap.avg_views ?? null,
-    snap.posting_frequency_per_week ?? null,
-    snap.engagement_rate ?? null,
-    snap.estimated_monthly_views ?? null,
-    snap.momentum_score ?? null,
-    snap.revenue_signal_notes ?? null
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+    [
+      creatorId,
+      snap.subscribers ?? null,
+      snap.avg_views ?? null,
+      snap.posting_frequency_per_week ?? null,
+      snap.engagement_rate ?? null,
+      snap.estimated_monthly_views ?? null,
+      snap.momentum_score ?? null,
+      snap.revenue_signal_notes ?? null,
+    ]
   );
 }
 
-export function latestSnapshot(creatorId: number) {
-  return db
-    .prepare(
-      `SELECT * FROM audience_snapshots WHERE creator_id = ? ORDER BY captured_at DESC LIMIT 1`
-    )
-    .get(creatorId) as any;
+export async function latestSnapshot(creatorId: number): Promise<any> {
+  return one(
+    `SELECT * FROM audience_snapshots WHERE creator_id = $1 ORDER BY captured_at DESC LIMIT 1`,
+    [creatorId]
+  );
 }
 
-export function snapshotHistory(creatorId: number) {
-  return db
-    .prepare(
-      `SELECT * FROM audience_snapshots WHERE creator_id = ? ORDER BY captured_at ASC`
-    )
-    .all(creatorId) as any[];
+export async function snapshotHistory(creatorId: number): Promise<any[]> {
+  return query(
+    `SELECT * FROM audience_snapshots WHERE creator_id = $1 ORDER BY captured_at ASC`,
+    [creatorId]
+  );
 }
 
 // ---------- Audits ----------
 
-export function saveAudit(creatorId: number, result: AuditResult) {
-  db.prepare(
+export async function saveAudit(creatorId: number, result: AuditResult): Promise<void> {
+  await query(
     `INSERT INTO audits
       (creator_id, agent, grade, score, summary, findings_json, recommendations_json,
        estimated_value_usd, raw_json)
-     VALUES (?,?,?,?,?,?,?,?,?)`
-  ).run(
-    creatorId,
-    result.agent,
-    result.grade ?? null,
-    result.score,
-    result.summary,
-    JSON.stringify(result.findings),
-    JSON.stringify(result.recommendations),
-    result.estimated_value_usd ?? null,
-    JSON.stringify(result.raw ?? {})
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+    [
+      creatorId,
+      result.agent,
+      result.grade ?? null,
+      result.score,
+      result.summary,
+      JSON.stringify(result.findings),
+      JSON.stringify(result.recommendations),
+      result.estimated_value_usd ?? null,
+      JSON.stringify(result.raw ?? {}),
+    ]
   );
 }
 
-export function latestAudit(creatorId: number, agent: AuditAgent) {
-  return db
-    .prepare(
-      `SELECT * FROM audits WHERE creator_id = ? AND agent = ? ORDER BY created_at DESC LIMIT 1`
-    )
-    .get(creatorId, agent) as any;
+export async function latestAudit(creatorId: number, agent: AuditAgent): Promise<any> {
+  return one(
+    `SELECT * FROM audits WHERE creator_id = $1 AND agent = $2 ORDER BY created_at DESC LIMIT 1`,
+    [creatorId, agent]
+  );
 }
 
-export function allLatestAudits(creatorId: number) {
-  return db
-    .prepare(
-      `SELECT a.* FROM audits a
-       INNER JOIN (
-         SELECT agent, MAX(created_at) AS max_created
-         FROM audits WHERE creator_id = ? GROUP BY agent
-       ) latest ON a.agent = latest.agent AND a.created_at = latest.max_created
-       WHERE a.creator_id = ?`
-    )
-    .all(creatorId, creatorId) as any[];
+export async function allLatestAudits(creatorId: number): Promise<any[]> {
+  return query(
+    `SELECT a.* FROM audits a
+     INNER JOIN (
+       SELECT agent, MAX(created_at) AS max_created
+       FROM audits WHERE creator_id = $1 GROUP BY agent
+     ) latest ON a.agent = latest.agent AND a.created_at = latest.max_created
+     WHERE a.creator_id = $1`,
+    [creatorId]
+  );
 }
 
 // ---------- Opportunity score ----------
 
-export function saveOpportunityScore(
+export async function saveOpportunityScore(
   creatorId: number,
   overall: number,
   priority: "High" | "Medium" | "Low",
   topfanFit: number,
   estimatedRevenue: string,
   breakdown: OpportunityBreakdown
-) {
-  db.prepare(
+): Promise<number> {
+  const row = await one<{ id: number }>(
     `INSERT INTO opportunity_scores
       (creator_id, overall_score, priority, topfan_fit_score, estimated_revenue_opportunity, breakdown_json)
-     VALUES (?,?,?,?,?,?)`
-  ).run(
-    creatorId,
-    overall,
-    priority,
-    topfanFit,
-    estimatedRevenue,
-    JSON.stringify(breakdown)
+     VALUES ($1,$2,$3,$4,$5,$6)
+     RETURNING id`,
+    [creatorId, overall, priority, topfanFit, estimatedRevenue, JSON.stringify(breakdown)]
   );
+  return row!.id;
 }
 
-export function latestOpportunityScore(creatorId: number) {
-  return db
-    .prepare(
-      `SELECT * FROM opportunity_scores WHERE creator_id = ? ORDER BY created_at DESC LIMIT 1`
-    )
-    .get(creatorId) as any;
+export async function latestOpportunityScore(creatorId: number): Promise<any> {
+  return one(
+    `SELECT * FROM opportunity_scores WHERE creator_id = $1 ORDER BY created_at DESC LIMIT 1`,
+    [creatorId]
+  );
 }
 
 // ---------- Proposals ----------
 
-export function saveProposal(
+export async function saveProposal(
   creatorId: number,
   opportunityScoreId: number | null,
   fields: { title: string; html_path?: string; markdown_path?: string; pdf_path?: string }
-) {
-  const info = db
-    .prepare(
-      `INSERT INTO proposals (creator_id, opportunity_score_id, title, html_path, markdown_path, pdf_path)
-       VALUES (?,?,?,?,?,?)`
-    )
-    .run(
+): Promise<number> {
+  const row = await one<{ id: number }>(
+    `INSERT INTO proposals (creator_id, opportunity_score_id, title, html_path, markdown_path, pdf_path)
+     VALUES ($1,$2,$3,$4,$5,$6)
+     RETURNING id`,
+    [
       creatorId,
       opportunityScoreId,
       fields.title,
       fields.html_path ?? null,
       fields.markdown_path ?? null,
-      fields.pdf_path ?? null
-    );
-  return Number(info.lastInsertRowid);
+      fields.pdf_path ?? null,
+    ]
+  );
+  return row!.id;
 }
 
-export function latestProposal(creatorId: number) {
-  return db
-    .prepare(
-      `SELECT * FROM proposals WHERE creator_id = ? ORDER BY created_at DESC LIMIT 1`
-    )
-    .get(creatorId) as any;
+export async function latestProposal(creatorId: number): Promise<any> {
+  return one(
+    `SELECT * FROM proposals WHERE creator_id = $1 ORDER BY created_at DESC LIMIT 1`,
+    [creatorId]
+  );
 }
 
 // ---------- Outreach ----------
 
-export function saveOutreach(
+export async function saveOutreach(
   creatorId: number,
   channel: "email" | "linkedin" | "x_dm",
   body: string,
   opts: { subject?: string; basedOn?: string[] } = {}
-) {
-  db.prepare(
+): Promise<void> {
+  await query(
     `INSERT INTO outreach (creator_id, channel, subject, body, based_on_json)
-     VALUES (?,?,?,?,?)`
-  ).run(
-    creatorId,
-    channel,
-    opts.subject ?? null,
-    body,
-    JSON.stringify(opts.basedOn ?? [])
+     VALUES ($1,$2,$3,$4,$5)`,
+    [creatorId, channel, opts.subject ?? null, body, JSON.stringify(opts.basedOn ?? [])]
   );
 }
 
-export function listOutreach(creatorId: number) {
-  return db
-    .prepare(`SELECT * FROM outreach WHERE creator_id = ? ORDER BY created_at DESC`)
-    .all(creatorId) as any[];
+export async function listOutreach(creatorId: number): Promise<any[]> {
+  return query(`SELECT * FROM outreach WHERE creator_id = $1 ORDER BY created_at DESC`, [
+    creatorId,
+  ]);
 }
 
 // ---------- CRM ----------
 
-export function ensureCrmRow(creatorId: number) {
-  const existing = db
-    .prepare(`SELECT * FROM crm WHERE creator_id = ?`)
-    .get(creatorId);
+export async function ensureCrmRow(creatorId: number): Promise<any> {
+  const existing = await one(`SELECT * FROM crm WHERE creator_id = $1`, [creatorId]);
   if (existing) return existing;
-  db.prepare(`INSERT INTO crm (creator_id) VALUES (?)`).run(creatorId);
-  return db.prepare(`SELECT * FROM crm WHERE creator_id = ?`).get(creatorId);
+  await query(`INSERT INTO crm (creator_id) VALUES ($1) ON CONFLICT (creator_id) DO NOTHING`, [
+    creatorId,
+  ]);
+  return one(`SELECT * FROM crm WHERE creator_id = $1`, [creatorId]);
 }
 
-export function updateCrm(
+export async function updateCrm(
   creatorId: number,
   fields: Partial<{
     status: string;
@@ -304,97 +306,99 @@ export function updateCrm(
     emails_sent: number;
     replies: number;
   }>
-) {
-  ensureCrmRow(creatorId);
+): Promise<void> {
+  await ensureCrmRow(creatorId);
   const cols = Object.keys(fields);
   if (cols.length === 0) return;
-  const setClause = cols.map((c) => `${c} = ?`).join(", ");
-  db.prepare(
-    `UPDATE crm SET ${setClause}, updated_at = datetime('now') WHERE creator_id = ?`
-  ).run(...cols.map((c) => (fields as any)[c]), creatorId);
+  const setClause = cols.map((c, i) => `${c} = $${i + 1}`).join(", ");
+  await query(
+    `UPDATE crm SET ${setClause}, updated_at = now() WHERE creator_id = $${cols.length + 1}`,
+    [...cols.map((c) => (fields as any)[c]), creatorId]
+  );
 }
 
-export function getCrm(creatorId: number) {
-  return db.prepare(`SELECT * FROM crm WHERE creator_id = ?`).get(creatorId) as any;
+export async function getCrm(creatorId: number): Promise<any> {
+  return one(`SELECT * FROM crm WHERE creator_id = $1`, [creatorId]);
 }
 
-export function listPipeline() {
-  return db
-    .prepare(
-      `SELECT c.*, cr.status as crm_status, cr.opportunity_value_usd, cr.close_probability_pct
-       FROM crm cr JOIN creators c ON c.id = cr.creator_id
-       ORDER BY cr.updated_at DESC`
-    )
-    .all() as any[];
+export async function listPipeline(): Promise<any[]> {
+  return query(
+    `SELECT c.*, cr.status as crm_status, cr.opportunity_value_usd, cr.close_probability_pct
+     FROM crm cr JOIN creators c ON c.id = cr.creator_id
+     ORDER BY cr.updated_at DESC`
+  );
 }
 
 // ---------- Follow-ups ----------
 
-export function saveFollowUp(
+export async function saveFollowUp(
   creatorId: number,
   dayOffset: 7 | 21 | 60,
   scheduledDate: string,
   body: string,
   channel = "email"
-) {
-  db.prepare(
+): Promise<void> {
+  await query(
     `INSERT INTO follow_ups (creator_id, day_offset, scheduled_date, channel, body)
-     VALUES (?,?,?,?,?)`
-  ).run(creatorId, dayOffset, scheduledDate, channel, body);
+     VALUES ($1,$2,$3,$4,$5)`,
+    [creatorId, dayOffset, scheduledDate, channel, body]
+  );
 }
 
-export function listFollowUps(creatorId: number) {
-  return db
-    .prepare(
-      `SELECT * FROM follow_ups WHERE creator_id = ? ORDER BY scheduled_date ASC`
-    )
-    .all(creatorId) as any[];
+export async function listFollowUps(creatorId: number): Promise<any[]> {
+  return query(
+    `SELECT * FROM follow_ups WHERE creator_id = $1 ORDER BY scheduled_date ASC`,
+    [creatorId]
+  );
 }
 
-export function dueFollowUps() {
-  return db
-    .prepare(
-      `SELECT f.*, c.name as creator_name FROM follow_ups f
-       JOIN creators c ON c.id = f.creator_id
-       WHERE f.status = 'scheduled' AND date(f.scheduled_date) <= date('now')
-       ORDER BY f.scheduled_date ASC`
-    )
-    .all() as any[];
+export async function dueFollowUps(): Promise<any[]> {
+  return query(
+    `SELECT f.*, c.name as creator_name FROM follow_ups f
+     JOIN creators c ON c.id = f.creator_id
+     WHERE f.status = 'scheduled' AND f.scheduled_date <= CURRENT_DATE
+     ORDER BY f.scheduled_date ASC`
+  );
 }
 
 // ---------- Pipeline runs ----------
 
-export function startPipelineRun(creatorId: number): number {
-  const info = db
-    .prepare(`INSERT INTO pipeline_runs (creator_id) VALUES (?)`)
-    .run(creatorId);
-  return Number(info.lastInsertRowid);
-}
-
-export function logPipelineStep(runId: number, message: string) {
-  const row = db
-    .prepare(`SELECT log_json FROM pipeline_runs WHERE id = ?`)
-    .get(runId) as { log_json: string };
-  const log = JSON.parse(row.log_json || "[]");
-  log.push({ at: new Date().toISOString(), message });
-  db.prepare(`UPDATE pipeline_runs SET log_json = ? WHERE id = ?`).run(
-    JSON.stringify(log),
-    runId
+export async function startPipelineRun(creatorId: number): Promise<number> {
+  const row = await one<{ id: number }>(
+    `INSERT INTO pipeline_runs (creator_id) VALUES ($1) RETURNING id`,
+    [creatorId]
   );
+  return row!.id;
 }
 
-export function finishPipelineRun(runId: number, status: "completed" | "failed") {
-  db.prepare(
-    `UPDATE pipeline_runs SET status = ?, finished_at = datetime('now') WHERE id = ?`
-  ).run(status, runId);
+export async function logPipelineStep(runId: number, message: string): Promise<void> {
+  const row = await one<{ log_json: string }>(
+    `SELECT log_json FROM pipeline_runs WHERE id = $1`,
+    [runId]
+  );
+  const log = JSON.parse(row?.log_json || "[]");
+  log.push({ at: new Date().toISOString(), message });
+  await query(`UPDATE pipeline_runs SET log_json = $1 WHERE id = $2`, [
+    JSON.stringify(log),
+    runId,
+  ]);
 }
 
-export function recentPipelineRuns(limit = 20) {
-  return db
-    .prepare(
-      `SELECT pr.*, c.name as creator_name FROM pipeline_runs pr
-       JOIN creators c ON c.id = pr.creator_id
-       ORDER BY pr.started_at DESC LIMIT ?`
-    )
-    .all(limit) as any[];
+export async function finishPipelineRun(
+  runId: number,
+  status: "completed" | "failed"
+): Promise<void> {
+  await query(`UPDATE pipeline_runs SET status = $1, finished_at = now() WHERE id = $2`, [
+    status,
+    runId,
+  ]);
+}
+
+export async function recentPipelineRuns(limit = 20): Promise<any[]> {
+  return query(
+    `SELECT pr.*, c.name as creator_name FROM pipeline_runs pr
+     JOIN creators c ON c.id = pr.creator_id
+     ORDER BY pr.started_at DESC LIMIT $1`,
+    [limit]
+  );
 }

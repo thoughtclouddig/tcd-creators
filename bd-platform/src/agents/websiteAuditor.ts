@@ -21,7 +21,7 @@ interface WebsiteAuditPayload {
 }
 
 export async function runWebsiteAuditor(creatorId: number): Promise<AuditResult> {
-  const creator = getCreator(creatorId);
+  const creator = await getCreator(creatorId);
   if (!creator) throw new Error(`Creator ${creatorId} not found`);
 
   if (!creator.website) {
@@ -39,7 +39,7 @@ export async function runWebsiteAuditor(creatorId: number): Promise<AuditResult>
       ],
       raw: {},
     };
-    saveAudit(creatorId, result);
+    await saveAudit(creatorId, result);
     return result;
   }
 
@@ -86,7 +86,7 @@ export async function runWebsiteAuditor(creatorId: number): Promise<AuditResult>
     },
   };
 
-  saveAudit(creatorId, result);
+  await saveAudit(creatorId, result);
   return result;
 }
 

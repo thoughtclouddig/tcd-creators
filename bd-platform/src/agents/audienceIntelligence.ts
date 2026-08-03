@@ -24,7 +24,7 @@ export interface AudienceIntelligenceResult {
 export async function runAudienceIntelligence(
   creatorId: number
 ): Promise<AudienceIntelligenceResult> {
-  const creator = getCreator(creatorId);
+  const creator = await getCreator(creatorId);
   if (!creator) throw new Error(`Creator ${creatorId} not found`);
 
   let result: AudienceIntelligenceResult;
@@ -35,8 +35,8 @@ export async function runAudienceIntelligence(
     result = computeFromStaticFields(creator.subscribers, creator.avg_views, creator.growth_pct);
   }
 
-  const previous = latestSnapshot(creatorId);
-  insertAudienceSnapshot(creatorId, {
+  const previous = await latestSnapshot(creatorId);
+  await insertAudienceSnapshot(creatorId, {
     subscribers: result.subscribers,
     avg_views: result.avg_views,
     posting_frequency_per_week: result.posting_frequency_per_week,

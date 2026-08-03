@@ -12,6 +12,7 @@ import { google } from "googleapis";
 import Parser from "rss-parser";
 import {
   getCreatorByName,
+  setYoutubeChannelId,
   updateCreatorAudienceFields,
   upsertCreator,
 } from "../db/repo.js";
@@ -30,13 +31,16 @@ export async function runDiscovery(seed: CreatorSeed): Promise<DiscoveryOutcome>
   const warnings: string[] = [];
   const sourcesUsed: string[] = ["manual"];
 
-  let creator = upsertCreator(seed);
+  let creator = await upsertCreator(seed);
 
   // ---- YouTube ----
   if (process.env.YOUTUBE_API_KEY && (seed.youtube_channel_id || seed.youtube_handle)) {
     try {
       const channelId = await resolveYouTubeChannelId(seed);
       if (channelId) {
+        // Persist the resolved ID immediately — every downstream agent (Audience
+        // Intelligence, Outreach) keys off creator.youtube_channel_id, not the seed handle.
+        await setYoutubeChannelId(creator.id, channelId);
         const { data } = await youtube.channels.list({
           key: process.env.YOUTUBE_API_KEY,
           id: [channelId],
@@ -44,7 +48,7 @@ export async function runDiscovery(seed: CreatorSeed): Promise<DiscoveryOutcome>
         });
         const ch = data.items?.[0];
         if (ch?.statistics) {
-          updateCreatorAudienceFields(creator.id, {
+          await updateCreatorAudienceFields(creator.id, {
             subscribers: Number(ch.statistics.subscriberCount ?? 0) || undefined,
             avg_views: undefined, // computed properly in Agent 2 from recent uploads
             source: "youtube",
@@ -96,7 +100,7 @@ export async function runDiscovery(seed: CreatorSeed): Promise<DiscoveryOutcome>
     }
   }
 
-  creator = getCreatorByName(seed.name)!;
+  creator = (await getCreatorByName(seed.name))!;
   return { creator, sources_used: sourcesUsed, warnings };
 }
 

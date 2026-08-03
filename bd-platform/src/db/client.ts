@@ -1,16 +1,31 @@
-import Database from "better-sqlite3";
+import pg from "pg";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const dbPath = process.env.DATABASE_PATH || "./data/tcd.db";
-fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+if (!process.env.DATABASE_URL) {
+  throw new Error(
+    "DATABASE_URL is not set. On Replit, open the Database pane to provision Postgres " +
+      "(it injects DATABASE_URL automatically). Locally, add it to .env."
+  );
+}
 
-export const db = new Database(dbPath);
-db.pragma("journal_mode = WAL");
-db.pragma("foreign_keys = ON");
+export const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL.includes("localhost")
+    ? false
+    : { rejectUnauthorized: false },
+});
 
-const schema = fs.readFileSync(path.join(__dirname, "schema.sql"), "utf-8");
-db.exec(schema);
+let initialized: Promise<void> | null = null;
+
+/** Runs schema.sql (idempotent — every statement is CREATE ... IF NOT EXISTS). Call once before any query. */
+export function ensureSchema(): Promise<void> {
+  if (!initialized) {
+    const schema = fs.readFileSync(path.join(__dirname, "schema.sql"), "utf-8");
+    initialized = pool.query(schema).then(() => undefined);
+  }
+  return initialized;
+}

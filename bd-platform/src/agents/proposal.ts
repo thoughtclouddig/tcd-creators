@@ -61,10 +61,10 @@ export interface ProposalOutcome {
 }
 
 export async function runProposalGenerator(creatorId: number): Promise<ProposalOutcome> {
-  const creator = getCreator(creatorId);
+  const creator = await getCreator(creatorId);
   if (!creator) throw new Error(`Creator ${creatorId} not found`);
 
-  const score = latestOpportunityScore(creatorId);
+  const score = await latestOpportunityScore(creatorId);
   if (!score) {
     throw new Error(
       `No opportunity score for creator ${creatorId} — run Agent 10 (scoring) before the proposal.`
@@ -72,7 +72,7 @@ export async function runProposalGenerator(creatorId: number): Promise<ProposalO
   }
   const breakdown = JSON.parse(score.breakdown_json);
 
-  const audits = allLatestAudits(creatorId);
+  const audits = await allLatestAudits(creatorId);
   const byAgent = Object.fromEntries(audits.map((a) => [a.agent, a]));
 
   const agentSummaries = REPORT_ORDER.filter((a) => byAgent[a]).map((a) => ({
@@ -124,7 +124,7 @@ export async function runProposalGenerator(creatorId: number): Promise<ProposalO
   fs.writeFileSync(htmlPath, html, "utf-8");
   fs.writeFileSync(markdownPath, markdown, "utf-8");
 
-  saveProposal(creatorId, score.id, {
+  await saveProposal(creatorId, score.id, {
     title: `Building the Future of ${creator.name}`,
     html_path: htmlPath,
     markdown_path: markdownPath,

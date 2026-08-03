@@ -36,9 +36,9 @@ export async function runFollowUpScheduler(
   creatorId: number,
   originalEmailBody: string
 ): Promise<FollowUpOutcome[]> {
-  const creator = getCreator(creatorId);
+  const creator = await getCreator(creatorId);
   if (!creator) throw new Error(`Creator ${creatorId} not found`);
-  const score = latestOpportunityScore(creatorId);
+  const score = await latestOpportunityScore(creatorId);
 
   const outcomes: FollowUpOutcome[] = [];
 
@@ -62,7 +62,7 @@ Return only the message body, no subject line.
     });
 
     const scheduledDate = addDays(new Date(), stage.dayOffset).toISOString().slice(0, 10);
-    saveFollowUp(creatorId, stage.dayOffset, scheduledDate, body);
+    await saveFollowUp(creatorId, stage.dayOffset, scheduledDate, body);
     outcomes.push({ dayOffset: stage.dayOffset, scheduledDate, body });
   }
 
