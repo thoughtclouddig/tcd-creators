@@ -97,9 +97,13 @@
     <div class="card">
       <% outreach.forEach(function(o) { %>
       <div class="outreach-block">
-        <span class="chan"><%= o.channel %></span>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span class="chan"><%= o.channel %></span>
+          <button class="copy-btn see-all" type="button" data-target="copy-<%= o.id %>" style="background:none;border:none;cursor:pointer">Copy →</button>
+        </div>
         <% if (o.subject) { %><div class="subject"><%= o.subject %></div><% } %>
         <div class="body"><%= o.body %></div>
+        <textarea id="copy-<%= o.id %>" style="position:absolute;left:-9999px;top:-9999px" readonly tabindex="-1" aria-hidden="true"><%= o.subject ? (o.subject + '\n\n' + o.body) : o.body %></textarea>
       </div>
       <% }) %>
     </div>
@@ -111,7 +115,7 @@
     <div class="section-head"><h2>Follow-up Drafts</h2></div>
     <p style="color:var(--ink-faint);font-size:.85rem;margin-bottom:20px;margin-top:-10px">Drafted for the dates below, not sent — "scheduled" here just means "not yet marked sent or skipped by you."</p>
     <table>
-      <thead><tr><th>Day</th><th>Target date</th><th>Status</th><th>Preview</th></tr></thead>
+      <thead><tr><th>Day</th><th>Target date</th><th>Status</th><th>Preview</th><th></th></tr></thead>
       <tbody>
         <% followUps.forEach(function(f) { %>
         <tr>
@@ -119,6 +123,10 @@
           <td class="muted"><%= f.scheduled_date %></td>
           <td><span class="badge badge-status"><%= f.status === 'scheduled' ? 'drafted' : f.status %></span></td>
           <td class="muted"><%= f.body.slice(0, 90) %>…</td>
+          <td>
+            <button class="copy-btn see-all" type="button" data-target="copy-fu-<%= f.id %>" style="background:none;border:none;cursor:pointer">Copy →</button>
+            <textarea id="copy-fu-<%= f.id %>" style="position:absolute;left:-9999px;top:-9999px" readonly tabindex="-1" aria-hidden="true"><%= f.body %></textarea>
+          </td>
         </tr>
         <% }) %>
       </tbody>
@@ -138,5 +146,29 @@
   <% } %>
 
 </main>
+<script>
+  document.querySelectorAll('.copy-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var ta = document.getElementById(btn.dataset.target);
+      var reset = function () { btn.textContent = 'Copy →'; };
+      var done = function () {
+        btn.textContent = 'Copied ✓';
+        setTimeout(reset, 1500);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(ta.value).then(done, function () { fallbackCopy(ta, done); });
+      } else {
+        fallbackCopy(ta, done);
+      }
+    });
+  });
+  function fallbackCopy(ta, done) {
+    ta.style.position = 'fixed';
+    ta.focus();
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) {}
+    ta.style.position = 'absolute';
+  }
+</script>
 </body>
 </html>
