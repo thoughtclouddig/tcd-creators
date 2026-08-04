@@ -481,3 +481,7 @@ export async function recentDiscoverySweeps(limit = 10): Promise<any[]> {
     [limit]
   );
 }
+
+export async function clearDiscoverySweepHistory(): Promise<void> {
+  await query(`DELETE FROM discovery_sweeps`);
+}

@@ -96,7 +96,12 @@
 
     <% if (sweeps.length > 0) { %>
     <div style="margin-top:36px">
-      <span class="kicker" style="display:block;margin-bottom:14px">Recent sweeps</span>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px">
+        <span class="kicker">Recent sweeps</span>
+        <form method="POST" action="/discover/sweeps/clear" onsubmit="return confirm('Clear all sweep history? This just removes the log, not any discovered creators.')">
+          <button class="see-all" type="submit" style="background:none;border:none;cursor:pointer">Clear history →</button>
+        </form>
+      </div>
       <table>
         <thead><tr><th>Started</th><th>Status</th><th>Found</th><th>New</th><th>Already known</th><th>Out of range</th></tr></thead>
         <tbody>

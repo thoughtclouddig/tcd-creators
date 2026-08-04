@@ -123,15 +123,15 @@ export const OUTREACH_SCHEMA = {
     },
     email_body: {
       type: "string",
-      description: "Under 70 words. Must read like a real person typed it in two minutes, not AI or a marketer -- see the system prompt's full list of banned patterns. Ends with exactly one question inviting them to see the plan.",
+      description: "Under 90 words (a real greeting adds length -- do not compress it away). Opens with 'Hi [FirstName],' on its own line, then short sentences (max ~15 words each, one idea per sentence), ending with exactly one question offering to send over the notes. Must read like a real person typed it in two minutes, not AI or a marketer -- see the system prompt's full list of banned patterns.",
     },
     linkedin_message: {
       type: "string",
-      description: "Under 40 words. Same voice rules as email_body, shorter.",
+      description: "Under 45 words, including a 'Hi [FirstName],' opener. Same voice and sentence-length rules as email_body, shorter overall.",
     },
     x_dm: {
       type: "string",
-      description: "Under 25 words. Same voice rules as email_body, terse.",
+      description: "Under 25 words. No greeting needed. Same voice and sentence-length rules as email_body, terse.",
     },
     specific_references: {
       type: "array",

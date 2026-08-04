@@ -6,6 +6,7 @@ import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
   allLatestAudits,
+  clearDiscoverySweepHistory,
   finishDiscoverySweep,
   getCreator,
   getCrm,
@@ -310,6 +311,14 @@ setInterval(() => {
 setTimeout(() => {
   maybeRunDailyAutoSweep().catch((err) => console.error("Auto sweep check failed:", err));
 }, 30 * 1000);
+
+app.post(
+  "/discover/sweeps/clear",
+  ah(async (_req, res) => {
+    await clearDiscoverySweepHistory();
+    res.redirect("/discover");
+  })
+);
 
 app.get(
   "/discover",

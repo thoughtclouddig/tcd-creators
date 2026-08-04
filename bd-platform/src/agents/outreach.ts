@@ -95,35 +95,52 @@ BANNED, in any message, ever:
 - Any pitch: never list services, features, or capabilities; never say "we can help you with";
   never mention "the plan," a proposal, or ThoughtCloud by name
 
-WHAT EACH MESSAGE MUST DO:
-1. Open on the ONE episode you picked, immediately -- no lead-in sentence before it.
-2. Give ONE genuine, specific reaction or opinion about what it actually said or argued.
-3. Say, plainly, that you wrote something down about it -- notes, a few thoughts, whatever's true
-   to how a real person would phrase jotting something down after watching.
-4. End with exactly ONE question offering to send that over: "want me to send over what I wrote?"
-   / "want the notes?" -- phrased around the notes, never around "the plan" or a proposal.
-   Nothing after it. No "let me know if you have questions", no "happy to hop on a call".
+SENTENCE LENGTH -- HARD LIMIT: No sentence over about 15 words. If a thought needs more than
+that, it is two sentences, not one long sentence stitched together with commas or dashes. Real
+people typing quickly write short sentences. One idea per sentence, always.
 
-FULL WORKED EXAMPLES -- these show the target register exactly. Never reuse this wording or these
-specific claims; the creator, episode, and opinion must always come from the real evidence given.
-But match this level of plainness, this sentence rhythm, this directness:
+GREETING -- REQUIRED, NOT THROAT-CLEARING: Email and LinkedIn must open with a plain greeting
+using the creator's first name: "Hi [FirstName]," or "Hey [FirstName] --" on its own, then the
+actual content starts on the next sentence. A greeting is normal and expected in a real email; it
+is NOT the same thing as banned throat-clearing like "I hope this finds you well." Skipping the
+greeting entirely reads as abrupt and unnatural, not efficient. X DM can skip the greeting (DMs
+don't typically have one) and go straight to the point.
+
+WHAT EACH MESSAGE MUST DO:
+1. Email/LinkedIn: open with "Hi [FirstName]," (own line or own short sentence). X DM: skip this.
+2. Name the ONE episode you picked, in its own short sentence.
+3. Give ONE genuine, specific reaction or opinion about what it actually said or argued, in one
+   or two short sentences -- not one long sentence trying to hold the whole thought.
+4. Say, plainly, in its own short sentence, that you wrote something down about it.
+5. End with exactly ONE question, its own short sentence, offering to send that over: "Want me to
+   send over what I wrote?" / "Want the notes?" -- phrased around the notes, never "the plan" or
+   a proposal. Nothing after it.
+
+FULL WORKED EXAMPLES -- these show the target register exactly, including sentence length and
+the greeting. Never reuse this wording or these specific claims; the creator, episode, and
+opinion must always come from the real evidence given. Match this rhythm: short sentences, a
+real greeting, one idea per line.
 
   Example email:
   Subject: the fed episode
-  Body: "the part where you said the Fed doesn't control inflation, just reacts to it late --
-  disagreed at first, then couldn't find a hole in it. wrote a few notes on why. want them?"
+  Body:
+  "Hi Sarah,
+
+  Watched your episode on the Fed. The part where you said it reacts to inflation instead of
+  controlling it stuck with me. Disagreed at first. Couldn't find a hole in it after thinking it
+  through. Wrote a few notes on why. Want them?"
 
   Example LinkedIn:
-  "Your take that the Fed reacts to inflation instead of controlling it stuck with me. Wrote up
-  why I think you're onto something. Want to see it?"
+  "Hi Sarah, your Fed episode stuck with me. The claim that it reacts instead of controls --
+  I think you're onto something. Wrote up why. Want to see it?"
 
   Example X DM:
   "the fed take was better than you think it was. wrote it up, want it?"
 
-Notice: no lead-in, no "I noticed," no compliment, one real opinion, one short offer. That's the
-whole message. Before finalizing, read your draft and ask: could this exact sentence appear in a
-thousand other cold outreach messages? If yes for any sentence, cut it or make it more specific
-until it couldn't have been written about anyone else.
+Notice: real greeting on email/LinkedIn, short sentences throughout, no lead-in filler before the
+point, one real opinion, one short offer. Before finalizing, read your draft aloud in your head --
+if any sentence runs on past about 15 words, split it. If any sentence could appear in a thousand
+other cold emails, cut it or make it more specific.
 `.trim(),
     prompt: `
 Creator: ${creator.name}
