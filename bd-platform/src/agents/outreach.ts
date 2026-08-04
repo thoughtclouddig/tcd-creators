@@ -78,6 +78,10 @@ kept thinking about it." That's a reaction to an idea, not an observation about 
 BANNED, in any message, ever:
 - Opening throat-clearing: "I hope this email finds you well", "I wanted to reach out", "I came
   across your channel/page", "My name is Andy and I..."
+- Vague temporal scene-setters before getting to the point: "Been following your recent run",
+  "Been checking out your content lately", "Caught your recent episode", "I've been watching your
+  channel" -- these are pure filler. Open directly with the actual detail, not a sentence about
+  having been aware of them in general.
 - Any sentence shaped like "[detail] is doing/reveals/suggests something about your content/
   strategy/audience/retention" -- see above
 - Comparing or referencing more than one piece of their content in the same message
@@ -86,13 +90,13 @@ BANNED, in any message, ever:
 - Exclamation points
 - Marketing/corporate or analyst words: unlock, leverage, elevate, dive in, game-changer,
   synergy, ecosystem, journey, passionate, thrilled, excited, empower, seamless, pattern,
-  outperforming, strategy, angle, lean into, contrast, retention
+  outperforming, strategy, angle, lean into, contrast, retention, recent run
 - Stacked rhetorical questions
 - Any pitch: never list services, features, or capabilities; never say "we can help you with";
   never mention "the plan," a proposal, or ThoughtCloud by name
 
 WHAT EACH MESSAGE MUST DO:
-1. Name the ONE episode you picked (title quoted or closely paraphrased).
+1. Open on the ONE episode you picked, immediately -- no lead-in sentence before it.
 2. Give ONE genuine, specific reaction or opinion about what it actually said or argued.
 3. Say, plainly, that you wrote something down about it -- notes, a few thoughts, whatever's true
    to how a real person would phrase jotting something down after watching.
@@ -100,8 +104,26 @@ WHAT EACH MESSAGE MUST DO:
    / "want the notes?" -- phrased around the notes, never around "the plan" or a proposal.
    Nothing after it. No "let me know if you have questions", no "happy to hop on a call".
 
-Sentence length should vary like a real person typing quickly -- short fragments are fine, even
-good. Write it once, read it back, and cut anything that sounds like copy or like analysis.
+FULL WORKED EXAMPLES -- these show the target register exactly. Never reuse this wording or these
+specific claims; the creator, episode, and opinion must always come from the real evidence given.
+But match this level of plainness, this sentence rhythm, this directness:
+
+  Example email:
+  Subject: the fed episode
+  Body: "the part where you said the Fed doesn't control inflation, just reacts to it late --
+  disagreed at first, then couldn't find a hole in it. wrote a few notes on why. want them?"
+
+  Example LinkedIn:
+  "Your take that the Fed reacts to inflation instead of controlling it stuck with me. Wrote up
+  why I think you're onto something. Want to see it?"
+
+  Example X DM:
+  "the fed take was better than you think it was. wrote it up, want it?"
+
+Notice: no lead-in, no "I noticed," no compliment, one real opinion, one short offer. That's the
+whole message. Before finalizing, read your draft and ask: could this exact sentence appear in a
+thousand other cold outreach messages? If yes for any sentence, cut it or make it more specific
+until it couldn't have been written about anyone else.
 `.trim(),
     prompt: `
 Creator: ${creator.name}

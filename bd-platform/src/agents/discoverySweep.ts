@@ -47,6 +47,12 @@ export interface SweepOutcome {
   outOfRange: number;
   newCandidates: SweepCandidate[];
   warnings: string[];
+  quotaExhausted: boolean;
+}
+
+function isQuotaError(err: any): boolean {
+  const msg = String(err?.message ?? "");
+  return err?.code === 403 && /quota/i.test(msg);
 }
 
 export async function runDiscoverySweep(opts: {
@@ -69,12 +75,15 @@ export async function runDiscoverySweep(opts: {
       outOfRange: 0,
       newCandidates: [],
       warnings: ["YOUTUBE_API_KEY not set — discovery sweep needs it to search YouTube."],
+      quotaExhausted: false,
     };
   }
 
   // ---- 1. Search each ICP query, collect unique channel IDs ----
   const channelIds = new Set<string>();
+  let quotaExhausted = false;
   for (const q of queries) {
+    if (quotaExhausted) break; // every remaining query would fail identically -- don't waste the call
     try {
       const { data } = await youtube.search.list({
         key: process.env.YOUTUBE_API_KEY,
@@ -89,12 +98,29 @@ export async function runDiscoverySweep(opts: {
         if (id) channelIds.add(id);
       }
     } catch (err: any) {
-      warnings.push(`Search failed for "${q}": ${err.message}`);
+      if (isQuotaError(err)) {
+        quotaExhausted = true;
+        warnings.push(
+          "YouTube's daily search quota is exhausted -- stopped early instead of repeating the " +
+            "same failure for every remaining query. Resets at midnight Pacific time; the " +
+            "scheduled auto-sweep will retry automatically once it does."
+        );
+      } else {
+        warnings.push(`Search failed for "${q}": ${err.message}`);
+      }
     }
   }
 
   if (channelIds.size === 0) {
-    return { queries, channelsFound: 0, alreadyKnown: 0, outOfRange: 0, newCandidates: [], warnings };
+    return {
+      queries,
+      channelsFound: 0,
+      alreadyKnown: 0,
+      outOfRange: 0,
+      newCandidates: [],
+      warnings,
+      quotaExhausted,
+    };
   }
 
   // ---- 2. Pull stats for every candidate (batched — channels.list accepts up to 50 ids) ----
@@ -161,5 +187,6 @@ export async function runDiscoverySweep(opts: {
     outOfRange,
     newCandidates,
     warnings,
+    quotaExhausted,
   };
 }

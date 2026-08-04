@@ -255,15 +255,76 @@ app.post(
 
 // ---------- Discover ----------
 
+// Runs the sweep against an already-created sweep row and records the result. Shared by the
+// manual POST route (which pre-creates the row synchronously so it's visible on render) and
+// the daily auto-retry scheduler below (which creates and runs in one step).
+async function executeSweepAndFinish(sweepId: number, queries: string[]): Promise<void> {
+  try {
+    const outcome = await runDiscoverySweep({ queries });
+    await finishDiscoverySweep(sweepId, "completed", {
+      channels_found: outcome.channelsFound,
+      already_known: outcome.alreadyKnown,
+      out_of_range: outcome.outOfRange,
+      new_candidate_names: outcome.newCandidates.map((c) => c.creator.name),
+      warnings: outcome.warnings,
+    });
+  } catch (err: any) {
+    await finishDiscoverySweep(sweepId, "failed", { warnings: [String(err?.message ?? err)] });
+  }
+}
+
+async function runTrackedSweep(queries: string[]): Promise<void> {
+  const sweepId = await startDiscoverySweep(queries);
+  await executeSweepAndFinish(sweepId, queries);
+}
+
+function pacificDateString(d: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Los_Angeles",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+}
+
+// YouTube's search quota resets at midnight Pacific. Rather than making the user remember to
+// come back and re-click, check hourly whether a sweep has run yet for today's Pacific date --
+// if not, run one automatically. This also means a quota-exhausted sweep naturally gets retried
+// the next day without anyone having to do anything.
+let lastAutoSweepPacificDate: string | null = null;
+async function maybeRunDailyAutoSweep(): Promise<void> {
+  const today = pacificDateString(new Date());
+  if (lastAutoSweepPacificDate === today) return;
+  const [latest] = await recentDiscoverySweeps(1);
+  if (latest && pacificDateString(new Date(latest.started_at)) === today) {
+    lastAutoSweepPacificDate = today;
+    return;
+  }
+  lastAutoSweepPacificDate = today;
+  console.log(`Auto-running daily discovery sweep for ${today} (Pacific)`);
+  await runTrackedSweep(DEFAULT_ICP_QUERIES);
+}
+setInterval(() => {
+  maybeRunDailyAutoSweep().catch((err) => console.error("Auto sweep check failed:", err));
+}, 60 * 60 * 1000);
+setTimeout(() => {
+  maybeRunDailyAutoSweep().catch((err) => console.error("Auto sweep check failed:", err));
+}, 30 * 1000);
+
 app.get(
   "/discover",
   ah(async (_req, res) => {
     const sweeps = await recentDiscoverySweeps(5);
+    const quotaExhaustedToday =
+      sweeps[0]?.status === "completed" &&
+      pacificDateString(new Date(sweeps[0].started_at)) === pacificDateString(new Date()) &&
+      JSON.parse(sweeps[0].warnings_json || "[]").some((w: string) => /quota/i.test(w));
     res.render("discover", {
       queued: null,
       sweepQueued: false,
       defaultQueries: DEFAULT_ICP_QUERIES,
       sweeps,
+      quotaExhaustedToday,
     });
   })
 );
@@ -277,22 +338,12 @@ app.post(
       : DEFAULT_ICP_QUERIES;
 
     const sweepId = await startDiscoverySweep(queries);
-
     // Fire and forget — a sweep across several queries plus per-candidate stats lookups takes
     // a while, but unlike the full audit pipeline it's cheap (YouTube API only, no Claude).
-    // The sweep run row is what makes progress visible on the Discover page instead of only
-    // a server console log nobody watching the deployed app can see.
-    runDiscoverySweep({ queries }).then(
-      (outcome) =>
-        finishDiscoverySweep(sweepId, "completed", {
-          channels_found: outcome.channelsFound,
-          already_known: outcome.alreadyKnown,
-          out_of_range: outcome.outOfRange,
-          new_candidate_names: outcome.newCandidates.map((c) => c.creator.name),
-          warnings: outcome.warnings,
-        }),
-      (err) =>
-        finishDiscoverySweep(sweepId, "failed", { warnings: [String(err?.message ?? err)] })
+    // The sweep row (created synchronously above) is what makes progress visible on the
+    // Discover page instead of only a server console log nobody watching can see.
+    executeSweepAndFinish(sweepId, queries).catch((err) =>
+      console.error("Sweep execution failed:", err)
     );
 
     const sweeps = await recentDiscoverySweeps(5);
@@ -301,6 +352,7 @@ app.post(
       sweepQueued: true,
       defaultQueries: DEFAULT_ICP_QUERIES,
       sweeps,
+      quotaExhaustedToday: false,
     });
   })
 );
