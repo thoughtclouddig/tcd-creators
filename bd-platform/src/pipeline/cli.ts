@@ -10,6 +10,7 @@
  * a pipeline that will just log fourteen warnings.
  */
 import "dotenv/config";
+import { ensureSchema, pool } from "../db/client.js";
 import { hasClaudeKey } from "../lib/claude.js";
 import { runCreatorPipeline } from "./runCreatorPipeline.js";
 import type { CreatorSeed } from "../types.js";
@@ -58,6 +59,7 @@ async function main() {
     political_alignment: args["political-alignment"],
   };
 
+  await ensureSchema();
   console.log(`Running full pipeline for ${seed.name}...\n`);
   const result = await runCreatorPipeline(seed);
 
@@ -70,7 +72,9 @@ async function main() {
   console.log(`\nOpen the dashboard (npm run dashboard) to review creator #${result.creatorId}.`);
 }
 
-main().catch((err) => {
-  console.error("Pipeline crashed:", err);
-  process.exit(1);
-});
+main()
+  .catch((err) => {
+    console.error("Pipeline crashed:", err);
+    process.exitCode = 1;
+  })
+  .finally(() => pool.end());
