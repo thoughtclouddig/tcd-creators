@@ -9,6 +9,7 @@
     "dashboard": "tsx src/server/index.ts",
     "dashboard:build": "node dist/server/index.js",
     "pipeline": "tsx src/pipeline/cli.ts",
+    "fix-crm-status": "tsx src/scripts/fixCrmStatus.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -351,7 +351,16 @@ app.get(
 
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   console.error("Dashboard route error:", err);
-  res.status(500).send("Something went wrong loading this page — check the server logs.");
+  // This dashboard is already behind login and single-operator — showing the real error here
+  // (instead of a generic message forcing a trip to server logs) is a deliberate, temporary
+  // debugging aid, not a public-facing information leak.
+  const e = err as { message?: string; stack?: string };
+  res
+    .status(500)
+    .type("text/plain")
+    .send(
+      `Something went wrong loading this page.\n\n${e?.message ?? String(err)}\n\n${e?.stack ?? ""}`
+    );
 });
 
 const PORT = Number(process.env.PORT || 3000);

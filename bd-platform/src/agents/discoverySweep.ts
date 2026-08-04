@@ -140,7 +140,10 @@ export async function runDiscoverySweep(opts: {
       name: stats.title,
       youtube_channel_id: channelId,
     });
-    await updateCreatorAudienceFields(creator.id, { source: "youtube_discovery" });
+    await updateCreatorAudienceFields(creator.id, {
+      subscribers: stats.subscribers,
+      source: "youtube_discovery",
+    });
     // Cheap audience snapshot (Agent 2) so the dashboard can show momentum before anyone
     // commits to a full Claude-driven audit.
     try {
