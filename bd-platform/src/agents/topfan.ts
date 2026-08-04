@@ -31,10 +31,11 @@ PRIOR AUDIT FINDINGS (ownership, community, merch — for context, don't repeat 
 ${JSON.stringify(ctx.priorFindings, null, 2)}
 
 Produce a 0-100 "TopFan Fit Score" covering: membership potential, app value, community, commerce,
-premium content, push notifications, events, livestreams, and fan loyalty. The summary MUST explain
-WHY this creator specifically fits (or doesn't) — reference their actual audience size, engagement,
-and the ownership/community gaps already found. Findings should map roughly 1:1 to TopFan capabilities
-that close a specific gap for this creator.
+premium content, push notifications, events, livestreams, and fan loyalty. Keep the summary itself
+to ONE short sentence stating the headline fit — put the specific "why" (audience size, engagement,
+the ownership/community gaps already found) into the findings instead, one fact per finding, not
+crammed into a single run-on sentence. Findings should map roughly 1:1 to TopFan capabilities that
+close a specific gap for this creator.
 `.trim(),
     { needsSite: true, needsPriorAgents: ["ownership", "community", "merch"] }
   );

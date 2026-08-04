@@ -119,11 +119,20 @@ app.get(
       (c) => c.discovered_at && toDateOnly(c.discovered_at) === today
     ).length;
 
+    // Only creators with an actual opportunity_scores row AND every one of the 7 audit agents
+    // completed belong in Top Opportunities. Scoring runs even if some agents failed (a Claude
+    // call errored, e.g.) using a 50-default for the missing ones, so a score existing alone
+    // doesn't guarantee a real audit backs it — check the audit count too, not just the score.
+    const REQUIRED_AUDIT_COUNT = 7;
     const scored = (
       await Promise.all(
-        creators.map(async (c) => ({ creator: c, score: await latestOpportunityScore(c.id) }))
+        creators.map(async (c) => ({
+          creator: c,
+          score: await latestOpportunityScore(c.id),
+          auditCount: (await allLatestAudits(c.id)).length,
+        }))
       )
-    ).filter((x) => x.score);
+    ).filter((x) => x.score && x.auditCount >= REQUIRED_AUDIT_COUNT);
 
     const topOpportunities = scored
       .sort((a, b) => b.score.overall_score - a.score.overall_score)

@@ -10,15 +10,15 @@ export const AUDIT_RESULT_SCHEMA = {
     },
     summary: {
       type: "string",
-      description: "1-2 sentence executive summary of this audit, framed as opportunity, never as criticism.",
+      description: "1-2 SHORT sentences, plain text only -- no markdown (no **bold**, no bullets), no HTML tags. Executive summary of this audit, framed as opportunity, never as criticism.",
     },
     findings: {
       type: "array",
       items: {
         type: "object",
         properties: {
-          label: { type: "string" },
-          detail: { type: "string" },
+          label: { type: "string", description: "Plain text, no markdown or HTML." },
+          detail: { type: "string", description: "Plain text, no markdown or HTML." },
         },
         required: ["label", "detail"],
       },
@@ -29,8 +29,8 @@ export const AUDIT_RESULT_SCHEMA = {
       items: {
         type: "object",
         properties: {
-          title: { type: "string" },
-          detail: { type: "string" },
+          title: { type: "string", description: "Plain text, no markdown or HTML." },
+          detail: { type: "string", description: "Plain text, no markdown or HTML." },
           estimated_impact: { type: "string" },
         },
         required: ["title", "detail"],
@@ -49,7 +49,10 @@ export const WEBSITE_AUDIT_SCHEMA = {
   type: "object",
   properties: {
     overall_score: { type: "number", description: "0-100" },
-    summary: { type: "string" },
+    summary: {
+      type: "string",
+      description: "1-2 SHORT sentences, plain text only -- no markdown, no HTML tags.",
+    },
     category_grades: {
       type: "object",
       description: "Letter grade A-F for each category, plus one sentence of reasoning.",
