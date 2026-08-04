@@ -16,7 +16,7 @@ import {
 import { fetchSiteSnapshot } from "../lib/website.js";
 import { structuredCall } from "../lib/claude.js";
 import { OUTREACH_SCHEMA, OUTREACH_EDIT_SCHEMA } from "./schemas.js";
-import { BANNED_JARGON_CATEGORIES, SENTENCE_STYLE_RULES } from "../lib/writingStyle.js";
+import { BANNED_JARGON_CATEGORIES, SENTENCE_STYLE_RULES, INTEGRITY_RULES } from "../lib/writingStyle.js";
 
 const youtube = google.youtube("v3");
 
@@ -50,15 +50,10 @@ while watching, and you're sending a short message offering to share what you wr
 entire pretext of every message -- not "I have a business plan for you," not "I noticed something
 about your content strategy." Just: I watched this one thing, I wrote something about it, want it?
 
-STRUCTURAL RULE -- PICK ONE, IGNORE THE REST: You will be given a list of several recent video
-titles. Choose exactly ONE to focus on. Never mention, compare to, or imply anything about any
-other title on the list. The moment a message references two pieces of content side by side, it
-turns into strategy-analysis and reads as fake -- so it is structurally forbidden, not just
-discouraged. One episode. That's it.
-
-DO NOT FABRICATE. You were not given view counts, engagement numbers, or any way to compare one
-piece of content to another. You do not know what performed better or what patterns exist across
-their uploads. Every claim must be verifiable from the ONE title/detail you chose alone.
+HONESTY RULES -- these override everything else, including how natural or engaging a sentence
+sounds. A message that sounds perfectly human but claims work that was never done is worse than
+one that sounds robotic:
+${INTEGRITY_RULES}
 
 THE FAILURE MODE THAT KEEPS HAPPENING -- fake personalization ("SMYKM: show me you know me"): a
 message name-drops a detail then pivots into a manufactured insight about their content strategy,
@@ -167,10 +162,20 @@ specific references you used.
   }>({
     system: `
 You are a strict editor. You do not write outreach -- you take an existing draft and rewrite ONLY
-the parts that violate the checklist below. Keep every real detail, claim, and opinion the draft
-already has; do not soften the opinion or make it vaguer. Your only job is fixing violations.
+the parts that violate the checklist below. Your only job is fixing violations.
 
-CHECKLIST:
+CHECK THIS FIRST, IT MATTERS MORE THAN STYLE -- HONESTY:
+${INTEGRITY_RULES}
+A message can sound perfectly natural and still be a violation if it claims work that was never
+done (comparing content, claiming to know performance, claiming analysis happened). Fix these
+even if it means removing the most "engaging" part of the draft. A real example that got through
+before this check existed: "the Thune clip and your longer Kamala video are pulling attention
+differently than you'd expect. Mapped out why. Want to see the plan?" -- two pieces of content
+compared, a fabricated performance claim, a claim of analysis that never happened, and "the plan"
+instead of "the notes." Every one of those is an integrity violation, not a style one -- catch all
+four kinds every time, not just style issues.
+
+THEN CHECK STYLE:
 ${BANNED_JARGON_CATEGORIES}
 
 ${SENTENCE_STYLE_RULES}
@@ -178,14 +183,13 @@ ${SENTENCE_STYLE_RULES}
 Also require:
 - Email and LinkedIn must open with "Hi [FirstName]," using the creator's first name. X DM: no
   greeting needed.
-- Exactly one question at the very end, offering to send over "what I wrote" / "the notes" --
-  never "the plan" or a proposal.
 - No throat-clearing opener ("I hope this finds you well", "I wanted to reach out").
 
-Go through each of the four fields one at a time. Read every sentence. If a sentence contains a
-banned word/phrase, exceeds ~15 words, or violates the greeting/ending rules, rewrite that
-sentence -- keep the rest of the message as close to the original as possible. If a field already
-passes clean, return it unchanged. List what you actually changed in changes_made.
+Keep every real detail, claim, and opinion the draft already has, as long as it passes the
+honesty check above -- don't soften a real opinion or make it vaguer for style reasons alone. Go
+through each of the four fields one at a time, sentence by sentence. If a field already passes
+clean, return it unchanged. List what you actually changed in changes_made, including any
+honesty-rule fixes.
 `.trim(),
     prompt: `
 Creator's first name: ${creator.name.split(" ")[0]}
