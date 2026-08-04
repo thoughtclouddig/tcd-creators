@@ -8,12 +8,7 @@
  * actually does that thing and updates it — never automatically.
  */
 import { ensureCrmRow, getCrm, latestOpportunityScore, updateCrm } from "../db/repo.js";
-
-const PRIORITY_CLOSE_PROBABILITY: Record<string, number> = {
-  High: 25,
-  Medium: 12,
-  Low: 5,
-};
+import { STAGE_CLOSE_PROBABILITY } from "../lib/crmStages.js";
 
 export async function runCrmInit(creatorId: number) {
   await ensureCrmRow(creatorId);
@@ -23,7 +18,7 @@ export async function runCrmInit(creatorId: number) {
     await updateCrm(creatorId, {
       status: "drafts_ready",
       opportunity_value_usd: opportunityValue ?? undefined,
-      close_probability_pct: PRIORITY_CLOSE_PROBABILITY[score.priority] ?? 10,
+      close_probability_pct: STAGE_CLOSE_PROBABILITY.drafts_ready,
     });
   }
   return await getCrm(creatorId);

@@ -50,7 +50,7 @@
       <% rows.forEach(function(r) { %>
       <tr>
         <td class="name-cell"><%= r.name %></td>
-        <td><span class="badge badge-status"><%= (statusColumns.find(function(c){return c.key===r.crm_status}) || {}).label || r.crm_status %></span></td>
+        <td><span class="badge badge-status"><%= crmStatusLabel(r.crm_status) %></span></td>
         <td class="muted"><%= r.opportunity_value_usd ? ('$' + fmtNum(r.opportunity_value_usd)) : '—' %></td>
         <td class="muted"><%= r.close_probability_pct ? r.close_probability_pct + '%' : '—' %></td>
         <td class="muted"><%= r.followUpCount %> drafted</td>
@@ -170,9 +170,16 @@
                 throw new Error('HTTP ' + res.status + ': ' + text.slice(0, 300));
               });
             }
+            return res.json();
+          })
+          .then(function (data) {
             col.appendChild(card);
             updateCount(col);
             if (fromCol) updateCount(fromCol);
+            if (data && typeof data.close_probability_pct === 'number') {
+              var pctEl = card.querySelector('.meta b');
+              if (pctEl) pctEl.textContent = data.close_probability_pct + '%';
+            }
           })
           .catch(function (err) {
             alert('Could not update status:\n\n' + err.message);

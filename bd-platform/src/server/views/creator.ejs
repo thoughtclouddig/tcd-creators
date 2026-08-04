@@ -147,7 +147,7 @@
   <div class="section">
     <div class="section-head"><h2>CRM</h2></div>
     <div class="grid grid-3">
-      <div class="card stat-card"><span class="kicker">Status</span><div class="stat-value" style="font-size:1.6rem;font-family:var(--mono);color:var(--accent)"><%= crm.status %></div></div>
+      <div class="card stat-card"><span class="kicker">Status</span><div class="stat-value" style="font-size:1.6rem;font-family:var(--mono);color:var(--accent)"><%= crmStatusLabel(crm.status) %></div></div>
       <div class="card stat-card"><span class="kicker">Opportunity Value</span><div class="stat-value" style="font-size:1.8rem"><%= crm.opportunity_value_usd ? ('$' + fmtNum(crm.opportunity_value_usd)) : '—' %></div></div>
       <div class="card stat-card"><span class="kicker">Close Probability</span><div class="stat-value" style="font-size:1.8rem"><%= crm.close_probability_pct ?? '—' %>%</div></div>
     </div>

@@ -29,6 +29,7 @@ import { runDiscoverySweep, DEFAULT_ICP_QUERIES } from "../agents/discoverySweep
 import { runProposalGenerator } from "../agents/proposal.js";
 import { runOutreachWriter } from "../agents/outreach.js";
 import { runFollowUpScheduler } from "../agents/followUp.js";
+import { CRM_STATUS_LABELS, CRM_STATUSES, STAGE_CLOSE_PROBABILITY } from "../lib/crmStages.js";
 import type { AuditAgent, CreatorSeed } from "../types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -208,17 +209,7 @@ app.get(
 
 // ---------- Pipeline / CRM ----------
 
-const CRM_STATUS_LABELS: Record<string, string> = {
-  drafts_ready: "Drafts Ready",
-  contacted: "Contacted",
-  replied: "Replied",
-  meeting_booked: "Meeting Booked",
-  proposal_sent: "Proposal Sent",
-  negotiating: "Negotiating",
-  won: "Won",
-  lost: "Lost",
-};
-const CRM_STATUSES = Object.keys(CRM_STATUS_LABELS) as (keyof typeof CRM_STATUS_LABELS)[];
+app.locals.crmStatusLabel = (status: string): string => CRM_STATUS_LABELS[status] ?? status;
 
 app.get(
   "/pipeline",
@@ -241,12 +232,13 @@ app.post(
   ah(async (req, res) => {
     const id = Number(req.params.id);
     const status = (req.body as Record<string, string>).status;
-    if (!CRM_STATUSES.includes(status as (typeof CRM_STATUSES)[number])) {
+    if (!CRM_STATUSES.includes(status)) {
       res.status(400).json({ error: "Invalid status" });
       return;
     }
-    await updateCrm(id, { status });
-    res.json({ ok: true });
+    const closeProbabilityPct = STAGE_CLOSE_PROBABILITY[status];
+    await updateCrm(id, { status, close_probability_pct: closeProbabilityPct });
+    res.json({ ok: true, close_probability_pct: closeProbabilityPct });
   })
 );
 
