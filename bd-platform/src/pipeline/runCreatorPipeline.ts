@@ -36,13 +36,24 @@ export interface PipelineResult {
   proposalPath?: string;
 }
 
+/** Full pipeline for a brand-new creator: discovery/enrichment, then Agents 2-14. */
 export async function runCreatorPipeline(seed: CreatorSeed): Promise<PipelineResult> {
+  const { creator, warnings: discoveryWarnings } = await runDiscovery(seed);
+  const result = await runFullAuditPipeline(creator.id);
+  result.warnings.unshift(...discoveryWarnings.map((w) => `[discovery] ${w}`));
+  return result;
+}
+
+/**
+ * Agents 2-14 only, against a creator that's already in the DB (e.g. surfaced by the
+ * discovery sweep, which stores cheap candidates without spending Claude calls on every
+ * one). Lets a human pick which discovered creators are actually worth the full audit +
+ * proposal + outreach treatment, rather than running it on everything a broad search finds.
+ */
+export async function runFullAuditPipeline(creatorId: number): Promise<PipelineResult> {
   const warnings: string[] = [];
 
-  const { creator, warnings: discoveryWarnings } = await runDiscovery(seed);
-  discoveryWarnings.forEach((w) => warnings.push(`[discovery] ${w}`));
-
-  const runId = await startPipelineRun(creator.id);
+  const runId = await startPipelineRun(creatorId);
   const step = async (label: string, fn: () => Promise<unknown> | unknown) => {
     try {
       await logPipelineStep(runId, `${label}: started`);
@@ -55,33 +66,33 @@ export async function runCreatorPipeline(seed: CreatorSeed): Promise<PipelineRes
     }
   };
 
-  await step("Agent 2 — Audience Intelligence", () => runAudienceIntelligence(creator.id));
-  await step("Agent 3 — Website Auditor", () => runWebsiteAuditor(creator.id));
-  await step("Agent 4 — Audience Ownership", () => runOwnershipAudit(creator.id));
-  await step("Agent 5 — Merchandise", () => runMerchAudit(creator.id));
-  await step("Agent 6 — Monetization", () => runMonetizationAudit(creator.id));
-  await step("Agent 7 — Community", () => runCommunityAudit(creator.id));
-  await step("Agent 8 — AI Opportunity", () => runAiOpportunityAudit(creator.id));
-  await step("Agent 9 — TopFan Fit", () => runTopFanAudit(creator.id)); // after ownership/community/merch
-  await step("Agent 10 — Opportunity Scoring", () => runOpportunityScoring(creator.id));
+  await step("Agent 2 — Audience Intelligence", () => runAudienceIntelligence(creatorId));
+  await step("Agent 3 — Website Auditor", () => runWebsiteAuditor(creatorId));
+  await step("Agent 4 — Audience Ownership", () => runOwnershipAudit(creatorId));
+  await step("Agent 5 — Merchandise", () => runMerchAudit(creatorId));
+  await step("Agent 6 — Monetization", () => runMonetizationAudit(creatorId));
+  await step("Agent 7 — Community", () => runCommunityAudit(creatorId));
+  await step("Agent 8 — AI Opportunity", () => runAiOpportunityAudit(creatorId));
+  await step("Agent 9 — TopFan Fit", () => runTopFanAudit(creatorId)); // after ownership/community/merch
+  await step("Agent 10 — Opportunity Scoring", () => runOpportunityScoring(creatorId));
 
   let proposalPath: string | undefined;
   await step("Agent 11 — Executive Proposal", async () => {
-    const outcome = await runProposalGenerator(creator.id);
+    const outcome = await runProposalGenerator(creatorId);
     proposalPath = outcome.htmlPath;
   });
 
   let outreachEmailBody: string | undefined;
   await step("Agent 12 — Outreach Writer", async () => {
-    const outcome = await runOutreachWriter(creator.id);
+    const outcome = await runOutreachWriter(creatorId);
     outreachEmailBody = outcome.emailBody;
   });
 
-  await step("Agent 13 — CRM Init", () => runCrmInit(creator.id));
+  await step("Agent 13 — CRM Init", () => runCrmInit(creatorId));
 
   await step("Agent 14 — Follow-up Scheduler", async () => {
     if (outreachEmailBody) {
-      await runFollowUpScheduler(creator.id, outreachEmailBody);
+      await runFollowUpScheduler(creatorId, outreachEmailBody);
     } else {
       throw new Error("skipped — no outreach email body available");
     }
@@ -91,5 +102,5 @@ export async function runCreatorPipeline(seed: CreatorSeed): Promise<PipelineRes
     warnings.length === 0 ? "completed" : "completed_with_warnings";
   await finishPipelineRun(runId, warnings.length > 0 && !proposalPath ? "failed" : "completed");
 
-  return { creatorId: creator.id, runId, status, warnings, proposalPath };
+  return { creatorId, runId, status, warnings, proposalPath };
 }

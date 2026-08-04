@@ -82,6 +82,22 @@ export async function listCreators(): Promise<Creator[]> {
   return query<Creator>(`SELECT * FROM creators ORDER BY discovered_at DESC`);
 }
 
+export async function getCreatorByYoutubeChannelId(
+  channelId: string
+): Promise<Creator | undefined> {
+  return one<Creator>(`SELECT * FROM creators WHERE youtube_channel_id = $1`, [channelId]);
+}
+
+/** Creators with no opportunity_scores row yet — discovered but not yet fully audited. */
+export async function listUnauditedCreators(): Promise<Creator[]> {
+  return query<Creator>(
+    `SELECT c.* FROM creators c
+     LEFT JOIN opportunity_scores os ON os.creator_id = c.id
+     WHERE os.id IS NULL
+     ORDER BY c.discovered_at DESC`
+  );
+}
+
 export async function setYoutubeChannelId(id: number, channelId: string): Promise<void> {
   await query(
     `UPDATE creators SET youtube_channel_id = $1, updated_at = now() WHERE id = $2`,

@@ -59,6 +59,33 @@
       <button class="btn" type="submit">Run full pipeline →</button>
     </div>
   </form>
+
+  <div class="section">
+    <div class="section-head">
+      <h2>Discovery Sweep</h2>
+    </div>
+    <p style="color:var(--ink-soft);max-width:70ch;margin-bottom:22px">
+      Searches YouTube by ICP keyword, filters out creators already in the system and anyone
+      outside a sensible subscriber range, and stores new candidates with a basic audience
+      snapshot — no Claude calls, so this is cheap to run often. Discovered creators show up
+      as "Needs Audit" on the dashboard; you decide which ones get the full 14-agent treatment.
+    </p>
+
+    <% if (sweepQueued) { %>
+      <div class="card" style="margin-bottom:24px;border-color:rgba(76,141,255,.4)">
+        <span class="kicker">Sweep running</span>
+        <p style="margin-top:10px;color:var(--ink-soft)">Searching YouTube in the background — check the <a class="see-all" href="/">dashboard</a> in a minute or two for new "Needs Audit" creators.</p>
+      </div>
+    <% } %>
+
+    <form method="POST" action="/discover/sweep">
+      <label style="display:block;font-family:var(--mono);font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:6px">
+        ICP search queries (one per line — leave as-is to use the defaults)
+      </label>
+      <textarea name="queries" rows="6" style="width:100%;background:var(--bg-elev);border:1px solid var(--glass-border);border-radius:8px;padding:12px 13px;color:var(--ink);font-family:var(--mono);font-size:.85rem;margin-bottom:16px"><%= defaultQueries.join('\n') %></textarea>
+      <button class="btn" type="submit">Run discovery sweep →</button>
+    </form>
+  </div>
 </main>
 </body>
 </html>

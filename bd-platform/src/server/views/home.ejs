@@ -34,6 +34,33 @@
     </div>
   </div>
 
+  <% if (unaudited.length > 0) { %>
+  <div class="section">
+    <div class="section-head">
+      <h2>Needs Audit <span class="muted" style="font-family:var(--mono);font-size:.8rem">(<%= stats.needsAudit %>)</span></h2>
+      <a class="see-all" href="/discover">Run a new discovery sweep →</a>
+    </div>
+    <table>
+      <thead><tr><th>Creator</th><th>Subscribers</th><th>Momentum</th><th>Source</th><th></th></tr></thead>
+      <tbody>
+        <% unaudited.forEach(function(c) { %>
+        <tr>
+          <td class="name-cell"><a href="/creators/<%= c.id %>"><%= c.name %></a></td>
+          <td class="muted"><%= c.subscribers ? Number(c.subscribers).toLocaleString() : '—' %></td>
+          <td class="muted"><%= c.momentum_score != null ? Math.round(c.momentum_score) + '/100' : '—' %></td>
+          <td class="muted"><%= c.source %></td>
+          <td>
+            <form method="POST" action="/creators/<%= c.id %>/audit" style="display:inline">
+              <button class="see-all" type="submit" style="background:none;border:none;cursor:pointer;padding:0">Run audit →</button>
+            </form>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+
   <div class="section">
     <div class="section-head">
       <h2>Top Opportunities</h2>

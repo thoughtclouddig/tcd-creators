@@ -15,10 +15,12 @@ import {
   listFollowUps,
   listOutreach,
   listPipeline,
+  listUnauditedCreators,
   recentPipelineRuns,
 } from "../db/repo.js";
 import { pool } from "../db/client.js";
-import { runCreatorPipeline } from "../pipeline/runCreatorPipeline.js";
+import { runCreatorPipeline, runFullAuditPipeline } from "../pipeline/runCreatorPipeline.js";
+import { runDiscoverySweep, DEFAULT_ICP_QUERIES } from "../agents/discoverySweep.js";
 import type { AuditAgent, CreatorSeed } from "../types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -121,6 +123,13 @@ app.get(
       pipelineRows.reduce((sum, r) => sum + (r.opportunity_value_usd || 0), 0) / 1000
     );
 
+    const unaudited = await Promise.all(
+      (await listUnauditedCreators()).slice(0, 10).map(async (c) => ({
+        ...c,
+        momentum_score: (await latestSnapshot(c.id))?.momentum_score ?? null,
+      }))
+    );
+
     res.render("home", {
       stats: {
         totalCreators: creators.length,
@@ -129,10 +138,12 @@ app.get(
         proposalsGenerated: proposals.length,
         pipelineValueK,
         activeInPipeline: pipelineRows.length,
+        needsAudit: unaudited.length,
       },
       topOpportunities,
       recentReports: proposals,
       recentCreators: creators.slice(0, 8),
+      unaudited,
     });
   })
 );
@@ -157,8 +168,48 @@ app.get(
 // ---------- Discover ----------
 
 app.get("/discover", (_req, res) => {
-  res.render("discover", { queued: null });
+  res.render("discover", { queued: null, sweepQueued: false, defaultQueries: DEFAULT_ICP_QUERIES });
 });
+
+app.post("/discover/sweep", (req, res) => {
+  const body = req.body as Record<string, string>;
+  const queries = body.queries
+    ? body.queries.split("\n").map((q) => q.trim()).filter(Boolean)
+    : undefined;
+
+  // Fire and forget — a sweep across several queries plus per-candidate stats lookups takes
+  // a while, but unlike the full audit pipeline it's cheap (YouTube API only, no Claude).
+  runDiscoverySweep({ queries }).then(
+    (outcome) => {
+      console.log(
+        `Discovery sweep done: ${outcome.newCandidates.length} new candidates ` +
+          `(${outcome.channelsFound} found, ${outcome.alreadyKnown} already known, ${outcome.outOfRange} out of range)`
+      );
+      if (outcome.warnings.length) console.warn("Sweep warnings:", outcome.warnings);
+    },
+    (err) => console.error("Discovery sweep failed:", err)
+  );
+
+  res.render("discover", { queued: null, sweepQueued: true, defaultQueries: DEFAULT_ICP_QUERIES });
+});
+
+app.post(
+  "/creators/:id/audit",
+  ah(async (req, res) => {
+    const id = Number(req.params.id);
+    const creator = await getCreator(id);
+    if (!creator) {
+      res.status(404).send("Creator not found");
+      return;
+    }
+    // Fire and forget, same as full discovery — this is the expensive, Claude-driven path
+    // a human triggers deliberately for a candidate the sweep surfaced.
+    runFullAuditPipeline(id).catch((err) => {
+      console.error(`Full audit failed for creator ${id}:`, err);
+    });
+    res.redirect(`/creators/${id}?auditQueued=1`);
+  })
+);
 
 app.post("/discover", (req, res) => {
   const body = req.body as Record<string, string>;
@@ -228,6 +279,7 @@ app.get(
       audits,
       outreach,
       followUps,
+      auditQueued: req.query.auditQueued === "1",
     });
   })
 );
