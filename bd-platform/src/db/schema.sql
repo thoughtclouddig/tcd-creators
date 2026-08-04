@@ -87,7 +87,9 @@ CREATE TABLE IF NOT EXISTS outreach (
 CREATE TABLE IF NOT EXISTS crm (
   id                       SERIAL PRIMARY KEY,
   creator_id               INTEGER NOT NULL UNIQUE REFERENCES creators(id) ON DELETE CASCADE,
-  status                    TEXT DEFAULT 'new',  -- new | contacted | replied | meeting_booked | proposal_sent | negotiating | won | lost
+  status                    TEXT DEFAULT 'new',  -- new | drafts_ready | contacted | replied | meeting_booked | proposal_sent | negotiating | won | lost
+  -- "contacted" and everything after it is a human marking that they actually reached out --
+  -- nothing in this system sends anything automatically.
   meetings_json              TEXT DEFAULT '[]',
   emails_sent                 INTEGER DEFAULT 0,
   replies                     INTEGER DEFAULT 0,

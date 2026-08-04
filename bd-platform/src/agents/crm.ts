@@ -1,10 +1,11 @@
 /**
  * Agent 13 — CRM
  *
- * Initializes/updates the CRM row for a creator once outreach exists to track. Status
- * transitions (contacted, replied, meeting_booked, ...) are driven by the dashboard/human
- * review, not by this agent — its job here is just to seed the row with a defensible
- * opportunity value and close probability so the pipeline view is never empty.
+ * Initializes/updates the CRM row for a creator once outreach drafts exist to track. This
+ * agent NEVER marks a creator as contacted — nothing in this system sends anything. It seeds
+ * status as "drafts_ready" (outreach copy exists and is waiting on human review/approval), and
+ * every later transition (contacted, replied, meeting_booked, ...) only happens when a human
+ * actually does that thing and updates it — never automatically.
  */
 import { ensureCrmRow, getCrm, latestOpportunityScore, updateCrm } from "../db/repo.js";
 
@@ -20,7 +21,7 @@ export async function runCrmInit(creatorId: number) {
   if (score) {
     const opportunityValue = parseRevenueMidpoint(score.estimated_revenue_opportunity);
     await updateCrm(creatorId, {
-      status: "contacted",
+      status: "drafts_ready",
       opportunity_value_usd: opportunityValue ?? undefined,
       close_probability_pct: PRIORITY_CLOSE_PROBABILITY[score.priority] ?? 10,
     });

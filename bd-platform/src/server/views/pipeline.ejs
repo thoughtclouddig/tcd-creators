@@ -8,11 +8,11 @@
   <div class="page-head">
     <div class="kicker">CRM</div>
     <h1>Pipeline</h1>
-    <p>Every creator that's had outreach initiated, with status, opportunity value, and close probability.</p>
+    <p>Every creator with outreach drafted, with status, opportunity value, and close probability. Nothing here has been sent — this system only ever drafts; "contacted" and later stages only appear once you mark them yourself after actually reaching out.</p>
   </div>
 
   <% if (rows.length === 0) { %>
-    <div class="empty">Nothing in the pipeline yet — outreach hasn't been generated for any creator.</div>
+    <div class="empty">Nothing in the pipeline yet — outreach hasn't been drafted for any creator.</div>
   <% } else { %>
   <table>
     <thead><tr><th>Creator</th><th>Status</th><th>Opportunity Value</th><th>Close Probability</th><th>Follow-ups</th><th></th></tr></thead>
@@ -20,10 +20,10 @@
       <% rows.forEach(function(r) { %>
       <tr>
         <td class="name-cell"><%= r.name %></td>
-        <td><span class="badge badge-status"><%= r.crm_status %></span></td>
+        <td><span class="badge badge-status"><%= r.crm_status === 'drafts_ready' ? 'drafts ready' : r.crm_status %></span></td>
         <td class="muted"><%= r.opportunity_value_usd ? ('$' + Number(r.opportunity_value_usd).toLocaleString()) : '—' %></td>
         <td class="muted"><%= r.close_probability_pct ? r.close_probability_pct + '%' : '—' %></td>
-        <td class="muted"><%= r.followUpCount %> scheduled</td>
+        <td class="muted"><%= r.followUpCount %> drafted</td>
         <td><a class="see-all" href="/creators/<%= r.id %>">View →</a></td>
       </tr>
       <% }) %>

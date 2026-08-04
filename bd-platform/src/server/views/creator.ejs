@@ -75,7 +75,11 @@
 
   <% if (outreach.length) { %>
   <div class="section">
-    <div class="section-head"><h2>Outreach Drafts</h2></div>
+    <div class="section-head">
+      <h2>Outreach Drafts</h2>
+      <span class="badge" style="color:var(--warn);border-color:rgba(245,185,66,.35);background:rgba(245,185,66,.08)">Not sent — draft only</span>
+    </div>
+    <p style="color:var(--ink-faint);font-size:.85rem;margin-bottom:20px;margin-top:-10px">Text only. Nothing here is connected to email, X, or LinkedIn — copy and send manually if you want to use it.</p>
     <div class="card">
       <% outreach.forEach(function(o) { %>
       <div class="outreach-block">
@@ -90,15 +94,16 @@
 
   <% if (followUps.length) { %>
   <div class="section">
-    <div class="section-head"><h2>Scheduled Follow-ups</h2></div>
+    <div class="section-head"><h2>Follow-up Drafts</h2></div>
+    <p style="color:var(--ink-faint);font-size:.85rem;margin-bottom:20px;margin-top:-10px">Drafted for the dates below, not sent — "scheduled" here just means "not yet marked sent or skipped by you."</p>
     <table>
-      <thead><tr><th>Day</th><th>Scheduled</th><th>Status</th><th>Preview</th></tr></thead>
+      <thead><tr><th>Day</th><th>Target date</th><th>Status</th><th>Preview</th></tr></thead>
       <tbody>
         <% followUps.forEach(function(f) { %>
         <tr>
           <td class="muted">Day <%= f.day_offset %></td>
           <td class="muted"><%= f.scheduled_date %></td>
-          <td><span class="badge badge-status"><%= f.status %></span></td>
+          <td><span class="badge badge-status"><%= f.status === 'scheduled' ? 'drafted' : f.status %></span></td>
           <td class="muted"><%= f.body.slice(0, 90) %>…</td>
         </tr>
         <% }) %>
