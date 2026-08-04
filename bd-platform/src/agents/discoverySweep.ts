@@ -51,8 +51,11 @@ export interface SweepOutcome {
 }
 
 function isQuotaError(err: any): boolean {
-  const msg = String(err?.message ?? "");
-  return err?.code === 403 && /quota/i.test(msg);
+  // The googleapis client's error shape varies (err.code as number/string, err.status,
+  // err.response.status all show up depending on version/failure path) -- rather than guess
+  // which field is reliable, match on the message text itself, which unambiguously says
+  // "Quota exceeded" regardless of how the error object is shaped.
+  return /quota exceeded/i.test(String(err?.message ?? ""));
 }
 
 export async function runDiscoverySweep(opts: {
