@@ -10,10 +10,13 @@
     <div>
       <div class="kicker"><%= creator.source %> · discovered <%= fmtDate(creator.discovered_at) %></div>
       <h1><%= creator.name %></h1>
-      <% if (creator.website) { %><p class="muted"><a href="<%= creator.website %>" target="_blank" style="color:var(--accent)"><%= creator.website %></a></p><% } %>
+      <p class="muted" style="display:flex;gap:16px;flex-wrap:wrap">
+        <% if (creator.website) { %><a href="<%= creator.website %>" target="_blank" style="color:var(--accent)"><%= creator.website %></a><% } %>
+        <% if (creator.youtube_channel_id) { %><a href="https://www.youtube.com/channel/<%= creator.youtube_channel_id %>/about" target="_blank" style="color:var(--accent)">YouTube channel →</a><% } %>
+      </p>
       <form method="POST" action="/creators/<%= creator.id %>/business-email" style="margin-top:10px;display:flex;gap:8px;align-items:center">
         <label style="font-family:var(--mono);font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint)">Business email</label>
-        <input name="business_email" type="email" value="<%= creator.business_email || '' %>" placeholder="from their YouTube About page" style="background:var(--bg-elev);border:1px solid var(--glass-border);border-radius:6px;padding:6px 10px;color:var(--ink);font-family:var(--mono);font-size:.8rem;width:260px">
+        <input name="business_email" type="email" value="<%= creator.business_email || '' %>" placeholder="open YouTube → About → copy email" style="background:var(--bg-elev);border:1px solid var(--glass-border);border-radius:6px;padding:6px 10px;color:var(--ink);font-family:var(--mono);font-size:.8rem;width:280px">
         <button class="see-all" type="submit" style="background:none;border:none;cursor:pointer">Save</button>
       </form>
     </div>

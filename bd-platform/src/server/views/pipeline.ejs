@@ -118,13 +118,17 @@
           body: JSON.stringify({ status: status }),
         })
           .then(function (res) {
-            if (!res.ok) throw new Error('Update failed');
+            if (!res.ok) {
+              return res.text().then(function (text) {
+                throw new Error('HTTP ' + res.status + ': ' + text.slice(0, 300));
+              });
+            }
             col.appendChild(dragged);
             updateCount(col);
             if (fromCol) updateCount(fromCol);
           })
-          .catch(function () {
-            alert('Could not update status — try again.');
+          .catch(function (err) {
+            alert('Could not update status:\n\n' + err.message);
           });
       });
     });
