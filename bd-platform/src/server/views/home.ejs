@@ -29,7 +29,7 @@
     </div>
     <div class="card stat-card">
       <span class="kicker">Revenue Pipeline</span>
-      <div class="stat-value">$<%= stats.pipelineValueK %>k</div>
+      <div class="stat-value">$<%= fmtNum(stats.pipelineValueK) %>k</div>
       <div class="stat-sub"><%= stats.activeInPipeline %> active opportunities</div>
     </div>
   </div>
@@ -47,7 +47,7 @@
         <% unaudited.forEach(function(c) { %>
         <tr data-name="<%= c.name.toLowerCase() %>">
           <td class="name-cell"><a href="/creators/<%= c.id %>"><%= c.name %></a></td>
-          <td class="muted"><%= c.subscribers ? Number(c.subscribers).toLocaleString() : '—' %></td>
+          <td class="muted"><%= fmtNum(c.subscribers) %></td>
           <td class="muted"><%= c.momentum_score != null ? Math.round(c.momentum_score) + '/100' : '—' %></td>
           <td>
             <form method="POST" action="/creators/<%= c.id %>/audit" style="display:inline">

@@ -66,8 +66,8 @@
   <div class="section" style="margin-top:0">
     <div class="section-head"><h2>Audience Intelligence</h2></div>
     <div class="grid grid-4">
-      <div class="card stat-card"><span class="kicker">Subscribers</span><div class="stat-value" style="font-size:1.8rem"><%= snapshot.subscribers ?? '—' %></div></div>
-      <div class="card stat-card"><span class="kicker">Avg Views</span><div class="stat-value" style="font-size:1.8rem"><%= snapshot.avg_views ?? '—' %></div></div>
+      <div class="card stat-card"><span class="kicker">Subscribers</span><div class="stat-value" style="font-size:1.8rem"><%= fmtNum(snapshot.subscribers) %></div></div>
+      <div class="card stat-card"><span class="kicker">Avg Views</span><div class="stat-value" style="font-size:1.8rem"><%= fmtNum(snapshot.avg_views) %></div></div>
       <div class="card stat-card"><span class="kicker">Posting Freq / wk</span><div class="stat-value" style="font-size:1.8rem"><%= snapshot.posting_frequency_per_week ?? '—' %></div></div>
       <div class="card stat-card"><span class="kicker">Momentum</span><div class="stat-value" style="font-size:1.8rem"><%= snapshot.momentum_score ?? '—' %></div></div>
     </div>
@@ -148,7 +148,7 @@
     <div class="section-head"><h2>CRM</h2></div>
     <div class="grid grid-3">
       <div class="card stat-card"><span class="kicker">Status</span><div class="stat-value" style="font-size:1.6rem;font-family:var(--mono);color:var(--accent)"><%= crm.status %></div></div>
-      <div class="card stat-card"><span class="kicker">Opportunity Value</span><div class="stat-value" style="font-size:1.8rem"><%= crm.opportunity_value_usd ? ('$' + Number(crm.opportunity_value_usd).toLocaleString()) : '—' %></div></div>
+      <div class="card stat-card"><span class="kicker">Opportunity Value</span><div class="stat-value" style="font-size:1.8rem"><%= crm.opportunity_value_usd ? ('$' + fmtNum(crm.opportunity_value_usd)) : '—' %></div></div>
       <div class="card stat-card"><span class="kicker">Close Probability</span><div class="stat-value" style="font-size:1.8rem"><%= crm.close_probability_pct ?? '—' %>%</div></div>
     </div>
   </div>

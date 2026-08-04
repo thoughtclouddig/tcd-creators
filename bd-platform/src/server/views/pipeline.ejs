@@ -29,7 +29,7 @@
       <a class="kanban-card" href="/creators/<%= r.id %>" draggable="true" data-id="<%= r.id %>">
         <span class="name"><%= r.name %></span>
         <div class="meta">
-          <span><%= r.opportunity_value_usd ? ('$' + Number(r.opportunity_value_usd).toLocaleString()) : '—' %></span>
+          <span><%= r.opportunity_value_usd ? ('$' + fmtNum(r.opportunity_value_usd)) : '—' %></span>
           <b><%= r.close_probability_pct ? r.close_probability_pct + '%' : '—' %></b>
         </div>
       </a>

@@ -60,6 +60,11 @@ app.locals.fmtDateOnly = (value: Date | string | null | undefined): string => {
   if (Number.isNaN(d.getTime())) return String(value);
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 };
+app.locals.fmtNum = (value: number | string | null | undefined): string => {
+  if (value == null || value === "") return "—";
+  const n = Number(value);
+  return Number.isNaN(n) ? String(value) : n.toLocaleString("en-US");
+};
 
 // ---------- Auth ----------
 // Simple HTTP Basic Auth — sufficient for a single-operator internal tool. Required in every
