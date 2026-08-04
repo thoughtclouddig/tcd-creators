@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS creators (
   spotify_show_id     TEXT,
   substack_url        TEXT,
   x_handle            TEXT,
+  business_email      TEXT,   -- from the channel's public "About" page; entered manually, not scraped
   platform_links_json TEXT DEFAULT '{}',
   topics_json         TEXT DEFAULT '[]',
   political_alignment TEXT,              -- descriptive only, never pejorative
@@ -137,3 +138,11 @@ CREATE INDEX IF NOT EXISTS idx_audits_creator ON audits(creator_id, agent);
 CREATE INDEX IF NOT EXISTS idx_snapshots_creator ON audience_snapshots(creator_id, captured_at);
 CREATE INDEX IF NOT EXISTS idx_outreach_creator ON outreach(creator_id);
 CREATE INDEX IF NOT EXISTS idx_followups_creator ON follow_ups(creator_id, scheduled_date);
+
+-- ---------- Migrations ----------
+-- ensureSchema() re-runs this whole file on every boot (every statement above is
+-- CREATE ... IF NOT EXISTS, so it's a no-op against an already-current table). A column added
+-- to a CREATE TABLE block above only affects brand-new tables — an already-deployed table
+-- needs its own ALTER TABLE ... IF NOT EXISTS line here to actually pick up the change.
+
+ALTER TABLE creators ADD COLUMN IF NOT EXISTS business_email TEXT;

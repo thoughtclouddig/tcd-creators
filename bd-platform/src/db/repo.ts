@@ -105,6 +105,13 @@ export async function setYoutubeChannelId(id: number, channelId: string): Promis
   );
 }
 
+export async function setBusinessEmail(id: number, email: string): Promise<void> {
+  await query(
+    `UPDATE creators SET business_email = $1, updated_at = now() WHERE id = $2`,
+    [email, id]
+  );
+}
+
 export async function updateCreatorAudienceFields(
   id: number,
   fields: {

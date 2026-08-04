@@ -19,6 +19,7 @@ import {
   listUnauditedCreators,
   recentDiscoverySweeps,
   recentPipelineRuns,
+  setBusinessEmail,
   startDiscoverySweep,
 } from "../db/repo.js";
 import { pool } from "../db/client.js";
@@ -238,33 +239,57 @@ app.post(
   })
 );
 
-app.post("/discover", (req, res) => {
-  const body = req.body as Record<string, string>;
-  if (!body.name) {
-    res.status(400).send("Name is required");
-    return;
-  }
+app.post(
+  "/creators/:id/business-email",
+  ah(async (req, res) => {
+    const id = Number(req.params.id);
+    const creator = await getCreator(id);
+    if (!creator) {
+      res.status(404).send("Creator not found");
+      return;
+    }
+    const email = ((req.body as Record<string, string>).business_email || "").trim();
+    await setBusinessEmail(id, email);
+    res.redirect(`/creators/${id}`);
+  })
+);
 
-  const seed: CreatorSeed = {
-    name: body.name,
-    brand: body.brand || undefined,
-    website: body.website || undefined,
-    youtube_handle: body.youtube_handle || undefined,
-    youtube_channel_id: body.youtube_channel_id || undefined,
-    substack_url: body.substack_url || undefined,
-    x_handle: body.x_handle || undefined,
-    topics: body.topics ? body.topics.split(",").map((t) => t.trim()) : undefined,
-    political_alignment: body.political_alignment || undefined,
-  };
+app.post(
+  "/discover",
+  ah(async (req, res) => {
+    const body = req.body as Record<string, string>;
+    if (!body.name) {
+      res.status(400).send("Name is required");
+      return;
+    }
 
-  // Fire and forget — the pipeline takes minutes (many Claude calls). The dashboard's
-  // pipeline_runs log is the source of truth for progress; we don't block the request on it.
-  runCreatorPipeline(seed).catch((err) => {
-    console.error(`Pipeline failed for ${seed.name}:`, err);
-  });
+    const seed: CreatorSeed = {
+      name: body.name,
+      brand: body.brand || undefined,
+      website: body.website || undefined,
+      youtube_handle: body.youtube_handle || undefined,
+      youtube_channel_id: body.youtube_channel_id || undefined,
+      substack_url: body.substack_url || undefined,
+      x_handle: body.x_handle || undefined,
+      topics: body.topics ? body.topics.split(",").map((t) => t.trim()) : undefined,
+      political_alignment: body.political_alignment || undefined,
+    };
 
-  res.render("discover", { queued: seed.name });
-});
+    // Fire and forget — the pipeline takes minutes (many Claude calls). The dashboard's
+    // pipeline_runs log is the source of truth for progress; we don't block the request on it.
+    runCreatorPipeline(seed).catch((err) => {
+      console.error(`Pipeline failed for ${seed.name}:`, err);
+    });
+
+    const sweeps = await recentDiscoverySweeps(5);
+    res.render("discover", {
+      queued: seed.name,
+      sweepQueued: false,
+      defaultQueries: DEFAULT_ICP_QUERIES,
+      sweeps,
+    });
+  })
+);
 
 // ---------- Creator detail ----------
 
