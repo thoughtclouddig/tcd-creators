@@ -12,6 +12,7 @@ import { google } from "googleapis";
 import Parser from "rss-parser";
 import {
   getCreatorByName,
+  setYoutubeChannelId,
   updateCreatorAudienceFields,
   upsertCreator,
 } from "../db/repo.js";
@@ -37,6 +38,9 @@ export async function runDiscovery(seed: CreatorSeed): Promise<DiscoveryOutcome>
     try {
       const channelId = await resolveYouTubeChannelId(seed);
       if (channelId) {
+        // Persist the resolved ID immediately — every downstream agent (Audience
+        // Intelligence, Outreach) keys off creator.youtube_channel_id, not the seed handle.
+        await setYoutubeChannelId(creator.id, channelId);
         const { data } = await youtube.channels.list({
           key: process.env.YOUTUBE_API_KEY,
           id: [channelId],

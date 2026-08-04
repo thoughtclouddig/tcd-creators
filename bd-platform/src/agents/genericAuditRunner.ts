@@ -25,6 +25,14 @@ export interface AuditContext {
   priorFindings: Record<string, unknown>;
 }
 
+// Every audit prompt gets the same audience-stats block (see audienceEvidenceBlock) as
+// context. Without this instruction each agent independently opens its summary by restating
+// those same numbers — fine in isolation, repetitive when six audits sit on one page.
+const SHARED_SUFFIX =
+  " The audience size, growth momentum, and engagement numbers given as context are already " +
+  "displayed elsewhere on this creator's page — do not restate them in your summary. Open " +
+  "directly with the specific finding for this category.";
+
 export async function runGenericAudit(
   creatorId: number,
   agent: AuditAgent,
@@ -55,7 +63,7 @@ export async function runGenericAudit(
   };
 
   const payload = await structuredCall<GenericAuditPayload>({
-    system: systemPrompt,
+    system: systemPrompt + SHARED_SUFFIX,
     prompt: buildPrompt(ctx),
     schema: AUDIT_RESULT_SCHEMA,
     toolName: `emit_${agent}_audit`,
