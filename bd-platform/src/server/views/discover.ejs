@@ -8,7 +8,7 @@
   <div class="page-head">
     <div class="kicker">Agent 1 — Discovery</div>
     <h1>Add a creator</h1>
-    <p>Phase 1 intake is curated: seed a creator here and the full 14-agent pipeline runs against them — enrichment, audits, scoring, proposal, and outreach.</p>
+    <p>Add a creator by name to run the full 14-agent pipeline against them directly, or run a discovery sweep below to find new candidates automatically.</p>
   </div>
 
   <% if (queued) { %>
@@ -95,12 +95,12 @@
         <tbody>
           <% sweeps.forEach(function(s) { %>
           <tr>
-            <td class="muted"><%= s.started_at %></td>
+            <td class="muted"><%= fmtDate(s.started_at) %></td>
             <td>
               <% if (s.status === 'running') { %>
                 <span class="badge badge-status">running</span>
               <% } else if (s.status === 'failed') { %>
-                <span class="badge" style="color:var(--bad);border-color:rgba(242,85,90,.35);background:rgba(242,85,90,.08)">failed</span>
+                <span class="badge badge-bad">failed</span>
               <% } else { %>
                 <span class="badge badge-high">completed</span>
               <% } %>

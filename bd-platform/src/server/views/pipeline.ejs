@@ -32,24 +32,26 @@
   <% } %>
 
   <div class="section">
-    <div class="section-head"><h2>Recent Pipeline Runs</h2></div>
-    <% if (runs.length === 0) { %>
-      <div class="empty">No agent runs logged yet.</div>
-    <% } else { %>
-    <table>
-      <thead><tr><th>Creator</th><th>Status</th><th>Started</th><th>Finished</th></tr></thead>
-      <tbody>
-        <% runs.forEach(function(r) { %>
-        <tr>
-          <td class="name-cell"><%= r.creator_name %></td>
-          <td><span class="badge <%= r.status === 'completed' ? 'badge-high' : (r.status === 'failed' ? 'badge-low' : 'badge-status') %>"><%= r.status %></span></td>
-          <td class="muted"><%= r.started_at %></td>
-          <td class="muted"><%= r.finished_at || '—' %></td>
-        </tr>
-        <% }) %>
-      </tbody>
-    </table>
-    <% } %>
+    <details class="collapsible">
+      <summary>Recent Pipeline Runs</summary>
+      <% if (runs.length === 0) { %>
+        <div class="empty">No agent runs logged yet.</div>
+      <% } else { %>
+      <table>
+        <thead><tr><th>Creator</th><th>Status</th><th>Started</th><th>Finished</th></tr></thead>
+        <tbody>
+          <% runs.forEach(function(r) { %>
+          <tr>
+            <td class="name-cell"><%= r.creator_name %></td>
+            <td><span class="badge <%= r.status === 'completed' ? 'badge-high' : (r.status === 'failed' ? 'badge-bad' : 'badge-status') %>"><%= r.status %></span></td>
+            <td class="muted"><%= fmtDate(r.started_at) %></td>
+            <td class="muted"><%= r.finished_at ? fmtDate(r.finished_at) : '—' %></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+      <% } %>
+    </details>
   </div>
 </main>
 </body>

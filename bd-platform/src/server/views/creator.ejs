@@ -5,9 +5,10 @@
 <%- include('partials/topbar', { active: '' }) %>
 
 <main class="wrap">
+  <a href="/" class="see-all" style="display:inline-block;margin-bottom:22px">← Dashboard</a>
   <div class="hero">
     <div>
-      <div class="kicker"><%= creator.source %> · discovered <%= creator.discovered_at %></div>
+      <div class="kicker"><%= creator.source %> · discovered <%= fmtDate(creator.discovered_at) %></div>
       <h1><%= creator.name %></h1>
       <% if (creator.website) { %><p class="muted"><a href="<%= creator.website %>" target="_blank" style="color:var(--accent)"><%= creator.website %></a></p><% } %>
       <form method="POST" action="/creators/<%= creator.id %>/business-email" style="margin-top:10px;display:flex;gap:8px;align-items:center">
@@ -23,7 +24,7 @@
     </div>
     <% } else { %>
     <div class="score-big">
-      <span class="badge" style="color:var(--warn);border-color:rgba(245,185,66,.35);background:rgba(245,185,66,.08)">Needs Audit</span>
+      <span class="badge badge-warn">Needs Audit</span>
     </div>
     <% } %>
   </div>
@@ -70,6 +71,7 @@
   </div>
   <% } %>
 
+  <% if (audits.length > 0) { %>
   <div class="section">
     <div class="section-head"><h2>Audits</h2></div>
     <div class="grid grid-3">
@@ -86,12 +88,13 @@
       <% }) %>
     </div>
   </div>
+  <% } %>
 
   <% if (outreach.length) { %>
   <div class="section">
     <div class="section-head">
       <h2>Outreach Drafts</h2>
-      <span class="badge" style="color:var(--warn);border-color:rgba(245,185,66,.35);background:rgba(245,185,66,.08)">Not sent — draft only</span>
+      <span class="badge badge-warn">Not sent — draft only</span>
     </div>
     <p style="color:var(--ink-faint);font-size:.85rem;margin-bottom:20px;margin-top:-10px">Text only. Nothing here is connected to email, X, or LinkedIn — copy and send manually if you want to use it.</p>
     <div class="card">
@@ -120,7 +123,7 @@
         <% followUps.forEach(function(f) { %>
         <tr>
           <td class="muted">Day <%= f.day_offset %></td>
-          <td class="muted"><%= f.scheduled_date %></td>
+          <td class="muted"><%= fmtDateOnly(f.scheduled_date) %></td>
           <td><span class="badge badge-status"><%= f.status === 'scheduled' ? 'drafted' : f.status %></span></td>
           <td class="muted"><%= f.body.slice(0, 90) %>…</td>
           <td>

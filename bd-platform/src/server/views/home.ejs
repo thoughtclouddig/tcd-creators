@@ -38,17 +38,17 @@
   <div class="section">
     <div class="section-head">
       <h2>Needs Audit <span class="muted" style="font-family:var(--mono);font-size:.8rem">(<%= stats.needsAudit %>)</span></h2>
+      <input class="table-search" data-filter-table="needs-audit-table" type="text" placeholder="Filter by name…">
       <a class="see-all" href="/discover">Run a new discovery sweep →</a>
     </div>
-    <table>
-      <thead><tr><th>Creator</th><th>Subscribers</th><th>Momentum</th><th>Source</th><th></th></tr></thead>
+    <table id="needs-audit-table">
+      <thead><tr><th>Creator</th><th>Subscribers</th><th>Momentum</th><th></th></tr></thead>
       <tbody>
         <% unaudited.forEach(function(c) { %>
-        <tr>
+        <tr data-name="<%= c.name.toLowerCase() %>">
           <td class="name-cell"><a href="/creators/<%= c.id %>"><%= c.name %></a></td>
           <td class="muted"><%= c.subscribers ? Number(c.subscribers).toLocaleString() : '—' %></td>
           <td class="muted"><%= c.momentum_score != null ? Math.round(c.momentum_score) + '/100' : '—' %></td>
-          <td class="muted"><%= c.source %></td>
           <td>
             <form method="POST" action="/creators/<%= c.id %>/audit" style="display:inline">
               <button class="see-all" type="submit" style="background:none;border:none;cursor:pointer;padding:0">Run audit →</button>
@@ -64,16 +64,19 @@
   <div class="section">
     <div class="section-head">
       <h2>Top Opportunities</h2>
+      <% if (topOpportunities.length > 0) { %>
+      <input class="table-search" data-filter-table="top-opps-table" type="text" placeholder="Filter by name…">
+      <% } %>
       <a class="see-all" href="/pipeline">View pipeline →</a>
     </div>
     <% if (topOpportunities.length === 0) { %>
       <div class="empty">No opportunities scored yet. Run the pipeline for a creator to populate this.</div>
     <% } else { %>
-    <table>
+    <table id="top-opps-table">
       <thead><tr><th>Creator</th><th>Score</th><th>Priority</th><th>TopFan Fit</th><th>Est. Opportunity</th><th></th></tr></thead>
       <tbody>
         <% topOpportunities.forEach(function(c) { %>
-        <tr>
+        <tr data-name="<%= c.name.toLowerCase() %>">
           <td class="name-cell"><%= c.name %></td>
           <td class="score-pill"><b><%= c.overall_score %></b>/100</td>
           <td><span class="badge badge-<%= c.priority.toLowerCase() %>"><%= c.priority %></span></td>
@@ -87,7 +90,18 @@
     <% } %>
   </div>
 
-
 </main>
+<script>
+  document.querySelectorAll('[data-filter-table]').forEach(function (input) {
+    var table = document.getElementById(input.dataset.filterTable);
+    if (!table) return;
+    input.addEventListener('input', function () {
+      var q = input.value.trim().toLowerCase();
+      table.querySelectorAll('tbody tr[data-name]').forEach(function (row) {
+        row.style.display = row.dataset.name.indexOf(q) === -1 ? 'none' : '';
+      });
+    });
+  });
+</script>
 </body>
 </html>

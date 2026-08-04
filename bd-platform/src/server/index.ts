@@ -34,6 +34,30 @@ const app = express();
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
+// pg returns TIMESTAMPTZ/DATE columns as JS Date objects, not strings. Interpolating those
+// directly into a template calls Date.prototype.toString(), which prints the full verbose
+// "Tue Aug 04 2026 14:51:18 GMT+0000 (Coordinated Universal Time)" form everywhere a date
+// appears. app.locals makes these callable from every EJS template without passing them
+// through each individual res.render() call.
+app.locals.fmtDate = (value: Date | string | null | undefined): string => {
+  if (!value) return "—";
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return d.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+};
+app.locals.fmtDateOnly = (value: Date | string | null | undefined): string => {
+  if (!value) return "—";
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+};
+
 // ---------- Auth ----------
 // Simple HTTP Basic Auth — sufficient for a single-operator internal tool. Required in every
 // environment: without DASHBOARD_USERNAME/PASSWORD set, the app refuses to boot rather than
