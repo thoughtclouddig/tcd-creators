@@ -14,7 +14,12 @@
   <% if (rows.length === 0) { %>
     <div class="empty">Nothing in the pipeline yet — outreach hasn't been drafted for any creator.</div>
   <% } else { %>
-  <div class="kanban" id="kanban">
+  <div class="view-toggle" id="view-toggle" role="tablist">
+    <button type="button" data-view="kanban" class="active">Kanban</button>
+    <button type="button" data-view="list">List</button>
+  </div>
+
+  <div class="kanban" id="kanban" data-view-panel="kanban">
     <% statusColumns.forEach(function(col) { %>
     <% var colRows = rows.filter(function(r) { return r.crm_status === col.key; }) %>
     <div class="kanban-col" data-status="<%= col.key %>">
@@ -37,7 +42,23 @@
     </div>
     <% }) %>
   </div>
-  <p class="muted" style="font-size:.82rem;margin-top:14px">Drag a card between columns to update its status — this is the only thing in the whole system that represents something you actually did, not a draft.</p>
+  <p class="muted" style="font-size:.82rem;margin-top:14px" data-view-panel="kanban">Drag a card between columns to update its status — this is the only thing in the whole system that represents something you actually did, not a draft.</p>
+
+  <table data-view-panel="list" style="display:none">
+    <thead><tr><th>Creator</th><th>Status</th><th>Opportunity Value</th><th>Close Probability</th><th>Follow-ups</th><th></th></tr></thead>
+    <tbody>
+      <% rows.forEach(function(r) { %>
+      <tr>
+        <td class="name-cell"><%= r.name %></td>
+        <td><span class="badge badge-status"><%= (statusColumns.find(function(c){return c.key===r.crm_status}) || {}).label || r.crm_status %></span></td>
+        <td class="muted"><%= r.opportunity_value_usd ? ('$' + fmtNum(r.opportunity_value_usd)) : '—' %></td>
+        <td class="muted"><%= r.close_probability_pct ? r.close_probability_pct + '%' : '—' %></td>
+        <td class="muted"><%= r.followUpCount %> drafted</td>
+        <td><a class="see-all" href="/creators/<%= r.id %>">View →</a></td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
   <% } %>
 
   <div class="section">
@@ -64,6 +85,28 @@
   </div>
 </main>
 <script>
+  (function () {
+    var toggle = document.getElementById('view-toggle');
+    if (toggle) {
+      var panels = document.querySelectorAll('[data-view-panel]');
+      function setView(view) {
+        panels.forEach(function (p) {
+          p.style.display = p.dataset.viewPanel === view ? '' : 'none';
+        });
+        toggle.querySelectorAll('button').forEach(function (b) {
+          b.classList.toggle('active', b.dataset.view === view);
+        });
+        try { localStorage.setItem('pipelineView', view); } catch (e) {}
+      }
+      toggle.querySelectorAll('button').forEach(function (btn) {
+        btn.addEventListener('click', function () { setView(btn.dataset.view); });
+      });
+      var saved = null;
+      try { saved = localStorage.getItem('pipelineView'); } catch (e) {}
+      if (saved === 'list') setView('list');
+    }
+  })();
+
   (function () {
     var board = document.getElementById('kanban');
     if (!board) return;

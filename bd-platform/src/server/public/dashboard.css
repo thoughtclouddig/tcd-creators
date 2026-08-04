@@ -130,6 +130,11 @@ details.collapsible summary::before{content:"▸";font-family:var(--mono);font-s
 details.collapsible[open] summary::before{transform:rotate(90deg)}
 details.collapsible table{margin-top:22px}
 
+.view-toggle{display:inline-flex;gap:2px;background:var(--glass);border:1px solid var(--glass-border);border-radius:8px;padding:3px;margin-bottom:22px}
+.view-toggle button{font-family:var(--mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);background:none;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;transition:background .15s,color .15s}
+.view-toggle button.active{background:var(--accent);color:#fff}
+.view-toggle button:not(.active):hover{color:var(--ink)}
+
 .kanban{display:flex;gap:16px;overflow-x:auto;padding-bottom:16px;-webkit-overflow-scrolling:touch}
 .kanban-col{flex:0 0 270px;background:var(--glass);border:1px solid var(--glass-border);border-radius:12px;padding:16px;min-height:80px;transition:border-color .15s,background .15s}
 .kanban-col.drag-over{border-color:var(--accent);background:rgba(76,141,255,.06)}
