@@ -168,10 +168,21 @@ app.get(
       )
     ).filter((x) => x.score && x.auditCount >= REQUIRED_AUDIT_COUNT);
 
+    // NEVER spread creator + score together (`{...x.creator, ...x.score}`) -- opportunity_scores
+    // has its own `id` primary key column, and spreading it after the creator silently
+    // overwrites the creator's id with the score row's id. Every link on this page pointed at
+    // whatever creator happened to share that unrelated numeric id. Explicit fields only.
     const topOpportunities = scored
       .sort((a, b) => b.score.overall_score - a.score.overall_score)
       .slice(0, 10)
-      .map((x) => ({ ...x.creator, ...x.score }));
+      .map((x) => ({
+        id: x.creator.id,
+        name: x.creator.name,
+        overall_score: x.score.overall_score,
+        priority: x.score.priority,
+        topfan_fit_score: x.score.topfan_fit_score,
+        estimated_revenue_opportunity: x.score.estimated_revenue_opportunity,
+      }));
 
     const highPriority = scored.filter((x) => x.score.priority === "High").length;
 
