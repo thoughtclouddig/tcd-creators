@@ -107,10 +107,14 @@
       col.addEventListener('drop', function (e) {
         e.preventDefault();
         col.classList.remove('drag-over');
-        if (!dragged) return;
-        var id = dragged.dataset.id;
+        // Capture the dragged card into a local var immediately -- dragend fires (and nulls
+        // the shared `dragged` reference) before this handler's fetch().then() callback runs,
+        // since drop is async but dragend follows synchronously in the same drag sequence.
+        var card = dragged;
+        if (!card) return;
+        var id = card.dataset.id;
         var status = col.dataset.status;
-        var fromCol = dragged.closest('.kanban-col');
+        var fromCol = card.closest('.kanban-col');
         if (fromCol === col) return;
         fetch('/creators/' + id + '/crm-status', {
           method: 'POST',
@@ -123,7 +127,7 @@
                 throw new Error('HTTP ' + res.status + ': ' + text.slice(0, 300));
               });
             }
-            col.appendChild(dragged);
+            col.appendChild(card);
             updateCount(col);
             if (fromCol) updateCount(fromCol);
           })
