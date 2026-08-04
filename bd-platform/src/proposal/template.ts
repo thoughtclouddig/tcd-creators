@@ -123,6 +123,14 @@ ${WORDMARK_SVG}
   </div>
 </section>
 
+<section class="wrap reveal">
+  <div class="cta">
+    <span class="kicker">Let's Talk</span>
+    <p>Want to walk through where the biggest leverage is for ${escapeHtml(d.creatorName)}?</p>
+    <div class="reply-note">Just reply to this email — happy to talk it through.</div>
+  </div>
+</section>
+
 <section class="band wrap">
   <div class="kicker reveal">The Governing Idea</div>
   <p class="big reveal">Platforms build audiences.<br>Owned platforms build <em>businesses.</em></p>
@@ -154,6 +162,14 @@ ${WORDMARK_SVG}
     <div class="tl-item"><div class="day">Phase 2 · Platform</div><h3>Design &amp; build</h3><p>Website and app design, brand system, membership and commerce build-out.</p></div>
     <div class="tl-item"><div class="day">Phase 3 · Launch</div><h3>Migration &amp; go-live</h3><p>Content migration, member onboarding, community and email activation.</p></div>
     <div class="tl-item"><div class="day">Phase 4 · Growth</div><h3>Marketing &amp; optimization</h3><p>Automation, ongoing merch drops, membership growth, analytics-driven optimization.</p></div>
+  </div>
+</section>
+
+<section class="wrap reveal">
+  <div class="cta">
+    <span class="kicker">Let's Talk</span>
+    <p>Curious what Phase 1 would actually look like for ${escapeHtml(d.creatorName)}?</p>
+    <div class="reply-note">Reply to this email and let's talk specifics.</div>
   </div>
 </section>
 
@@ -209,6 +225,7 @@ ${WORDMARK_SVG}
   <div class="letter">
     <div class="salut">To ${escapeHtml(firstName(d.creatorName))},</div>
     ${paragraphs(d.closingLetter)}
+    <p>Reply to this email whenever you'd like to talk it through — no pressure, just an open door.</p>
     <div class="sign">
       Prepared for ${escapeHtml(d.creatorName)}<br>
       <b>ThoughtCloud Digital</b> — Building the Business Behind the Audience
@@ -414,6 +431,10 @@ section{padding-top:var(--sec-pad);padding-bottom:var(--sec-pad);border-top:1px 
 .founder-callout{margin-top:40px;padding:34px 36px;background:var(--paper-2);border-left:3px solid var(--accent);border-radius:0 6px 6px 0}
 @media(max-width:680px){.founder-callout{padding:24px 22px}}
 .founder-callout .fq{font-family:var(--serif);font-size:1.4rem;line-height:1.28;font-weight:400}
+.cta{text-align:center;padding:56px 24px;background:var(--paper-2);border:1px solid var(--line);border-radius:8px}
+.cta .kicker{display:block;margin-bottom:14px}
+.cta p{font-family:var(--serif);font-size:1.3rem;font-weight:400;color:var(--ink);max-width:44ch;margin:0 auto}
+.cta .reply-note{margin-top:16px;font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;text-transform:uppercase;color:var(--accent-deep)}
 .tl{position:relative}
 .tl::before{content:"";position:absolute;left:7px;top:8px;bottom:8px;width:1px;background:var(--line)}
 .tl-item{position:relative;padding:0 0 34px 44px}
