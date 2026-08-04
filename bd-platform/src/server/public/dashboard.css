@@ -67,7 +67,7 @@ main{padding:56px 0 100px}
 .section{margin-top:56px}
 .section-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:22px;gap:20px;flex-wrap:wrap}
 .section-head h2{font-size:1.4rem}
-.section-head .see-all{font-family:var(--mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.see-all{font-family:var(--mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
 
 table{width:100%;border-collapse:collapse}
 th{text-align:left;font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);padding:0 14px 14px;border-bottom:1px solid var(--line);font-weight:400}
