@@ -14,21 +14,30 @@
   <% if (rows.length === 0) { %>
     <div class="empty">Nothing in the pipeline yet — outreach hasn't been drafted for any creator.</div>
   <% } else { %>
-  <table>
-    <thead><tr><th>Creator</th><th>Status</th><th>Opportunity Value</th><th>Close Probability</th><th>Follow-ups</th><th></th></tr></thead>
-    <tbody>
-      <% rows.forEach(function(r) { %>
-      <tr>
-        <td class="name-cell"><%= r.name %></td>
-        <td><span class="badge badge-status"><%= r.crm_status === 'drafts_ready' ? 'drafts ready' : r.crm_status %></span></td>
-        <td class="muted"><%= r.opportunity_value_usd ? ('$' + Number(r.opportunity_value_usd).toLocaleString()) : '—' %></td>
-        <td class="muted"><%= r.close_probability_pct ? r.close_probability_pct + '%' : '—' %></td>
-        <td class="muted"><%= r.followUpCount %> drafted</td>
-        <td><a class="see-all" href="/creators/<%= r.id %>">View →</a></td>
-      </tr>
+  <div class="kanban" id="kanban">
+    <% statusColumns.forEach(function(col) { %>
+    <% var colRows = rows.filter(function(r) { return r.crm_status === col.key; }) %>
+    <div class="kanban-col" data-status="<%= col.key %>">
+      <div class="kanban-col-head">
+        <h3><%= col.label %></h3>
+        <span class="count"><%= colRows.length %></span>
+      </div>
+      <% if (colRows.length === 0) { %>
+        <div class="kanban-empty">—</div>
+      <% } %>
+      <% colRows.forEach(function(r) { %>
+      <a class="kanban-card" href="/creators/<%= r.id %>" draggable="true" data-id="<%= r.id %>">
+        <span class="name"><%= r.name %></span>
+        <div class="meta">
+          <span><%= r.opportunity_value_usd ? ('$' + Number(r.opportunity_value_usd).toLocaleString()) : '—' %></span>
+          <b><%= r.close_probability_pct ? r.close_probability_pct + '%' : '—' %></b>
+        </div>
+      </a>
       <% }) %>
-    </tbody>
-  </table>
+    </div>
+    <% }) %>
+  </div>
+  <p class="muted" style="font-size:.82rem;margin-top:14px">Drag a card between columns to update its status — this is the only thing in the whole system that represents something you actually did, not a draft.</p>
   <% } %>
 
   <div class="section">
@@ -54,5 +63,72 @@
     </details>
   </div>
 </main>
+<script>
+  (function () {
+    var board = document.getElementById('kanban');
+    if (!board) return;
+    var dragged = null;
+
+    function updateCount(col) {
+      var count = col.querySelectorAll('.kanban-card').length;
+      var span = col.querySelector('.kanban-col-head .count');
+      if (span) span.textContent = count;
+      var empty = col.querySelector('.kanban-empty');
+      if (count > 0 && empty) empty.remove();
+      if (count === 0 && !empty) {
+        var div = document.createElement('div');
+        div.className = 'kanban-empty';
+        div.textContent = '—';
+        col.appendChild(div);
+      }
+    }
+
+    board.querySelectorAll('.kanban-card').forEach(function (card) {
+      card.addEventListener('dragstart', function (e) {
+        dragged = card;
+        card.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', card.dataset.id);
+      });
+      card.addEventListener('dragend', function () {
+        card.classList.remove('dragging');
+        dragged = null;
+      });
+    });
+
+    board.querySelectorAll('.kanban-col').forEach(function (col) {
+      col.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        col.classList.add('drag-over');
+      });
+      col.addEventListener('dragleave', function () {
+        col.classList.remove('drag-over');
+      });
+      col.addEventListener('drop', function (e) {
+        e.preventDefault();
+        col.classList.remove('drag-over');
+        if (!dragged) return;
+        var id = dragged.dataset.id;
+        var status = col.dataset.status;
+        var fromCol = dragged.closest('.kanban-col');
+        if (fromCol === col) return;
+        fetch('/creators/' + id + '/crm-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: status }),
+        })
+          .then(function (res) {
+            if (!res.ok) throw new Error('Update failed');
+            col.appendChild(dragged);
+            updateCount(col);
+            if (fromCol) updateCount(fromCol);
+          })
+          .catch(function () {
+            alert('Could not update status — try again.');
+          });
+      });
+    });
+  })();
+</script>
 </body>
 </html>

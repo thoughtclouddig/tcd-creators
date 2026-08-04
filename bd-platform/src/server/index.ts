@@ -21,6 +21,7 @@ import {
   recentPipelineRuns,
   setBusinessEmail,
   startDiscoverySweep,
+  updateCrm,
 } from "../db/repo.js";
 import { pool } from "../db/client.js";
 import { runCreatorPipeline, runFullAuditPipeline } from "../pipeline/runCreatorPipeline.js";
@@ -94,6 +95,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 app.use(express.static(path.join(__dirname, "public")));
 app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 
 // Async route handlers reject on error rather than throwing synchronously — Express 4 won't
 // route that to error middleware on its own, so every async handler is wrapped to forward it.
@@ -199,6 +201,18 @@ app.get(
 
 // ---------- Pipeline / CRM ----------
 
+const CRM_STATUS_LABELS: Record<string, string> = {
+  drafts_ready: "Drafts Ready",
+  contacted: "Contacted",
+  replied: "Replied",
+  meeting_booked: "Meeting Booked",
+  proposal_sent: "Proposal Sent",
+  negotiating: "Negotiating",
+  won: "Won",
+  lost: "Lost",
+};
+const CRM_STATUSES = Object.keys(CRM_STATUS_LABELS) as (keyof typeof CRM_STATUS_LABELS)[];
+
 app.get(
   "/pipeline",
   ah(async (_req, res) => {
@@ -210,7 +224,22 @@ app.get(
       }))
     );
     const runs = await recentPipelineRuns(20);
-    res.render("pipeline", { rows, runs });
+    const statusColumns = CRM_STATUSES.map((key) => ({ key, label: CRM_STATUS_LABELS[key] }));
+    res.render("pipeline", { rows, runs, statusColumns });
+  })
+);
+
+app.post(
+  "/creators/:id/crm-status",
+  ah(async (req, res) => {
+    const id = Number(req.params.id);
+    const status = (req.body as Record<string, string>).status;
+    if (!CRM_STATUSES.includes(status as (typeof CRM_STATUSES)[number])) {
+      res.status(400).json({ error: "Invalid status" });
+      return;
+    }
+    await updateCrm(id, { status });
+    res.json({ ok: true });
   })
 );
 

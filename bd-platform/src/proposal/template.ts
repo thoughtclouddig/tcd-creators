@@ -32,6 +32,21 @@ export interface ProposalData {
   clients: { name: string; tag: string }[];
 }
 
+const CATEGORY_TOOLTIPS: Record<string, string> = {
+  Audience: "Audience size, growth momentum, and engagement combined — the core signal of whether this is an audience worth building around.",
+  Website: "How well the current site works as a headquarters: architecture, SEO, messaging, and overall user experience.",
+  "Audience Ownership": "How much of the relationship is owned outright (email, SMS, app, member database) versus rented from a platform that could change the rules tomorrow.",
+  Community: "Whether the audience has a real place to gather and talk to each other, not just watch — and how alive that space actually is.",
+  Merchandise: "Store presence, product range, and revenue currently left on the table from an audience that would buy.",
+  "AI Opportunity": "How much untapped leverage exists in turning every episode into a full content system automatically — transcripts, search, clips, newsletters.",
+};
+
+function tierWithTooltip(label: string): string {
+  const tip = CATEGORY_TOOLTIPS[label];
+  if (!tip) return `<span class="tier">${escapeHtml(label)}</span>`;
+  return `<span class="tier tier-tip"><span class="tier-label">${escapeHtml(label)}</span><span class="info-dot" tabindex="0">?<span class="tip">${escapeHtml(tip)}</span></span></span>`;
+}
+
 export function renderProposalHtml(d: ProposalData): string {
   const title = `Building the Future of ${escapeHtml(d.creatorName)}`;
   return `<!doctype html>
@@ -113,12 +128,12 @@ ${WORDMARK_SVG}
     ${d.categoryScores
       .map(
         (c) =>
-          `<div class="price-row"><span class="tier">${escapeHtml(c.label)}</span><span class="amt">${c.score10.toFixed(1)} / 10</span></div>`
+          `<div class="price-row">${tierWithTooltip(c.label)}<span class="amt">${c.score10.toFixed(1)} / 10</span></div>`
       )
       .join("\n    ")}
   </div>
   <div class="founder-callout">
-    <span class="kicker">TopFan Fit</span>
+    <span class="kicker tier-tip" style="display:inline-flex;align-items:center;gap:8px">TopFan Fit<span class="info-dot" tabindex="0">?<span class="tip" style="text-transform:none;letter-spacing:normal">How much this creator's specific situation — audience size, engagement, and the ownership/community gaps found above — would benefit from a branded app, membership, and premium content platform.</span></span></span>
     <p class="fq">${d.topfanFitScore} / 100 — estimated opportunity ${escapeHtml(d.estimatedRevenueOpportunity)}.</p>
   </div>
 </section>
@@ -426,15 +441,22 @@ section{padding-top:var(--sec-pad);padding-bottom:var(--sec-pad);border-top:1px 
 .stack-item p{font-size:.95rem;color:var(--ink-soft);line-height:1.55}
 .price-list{border-top:1px solid var(--line)}
 .price-row{display:flex;justify-content:space-between;align-items:baseline;gap:24px;padding:22px 4px;border-bottom:1px solid var(--line)}
-.price-row .tier{font-family:var(--serif);font-size:1.3rem;font-weight:400}
-.price-row .amt{font-family:var(--mono);font-size:.85rem;font-weight:500;color:var(--accent-deep);letter-spacing:.06em;text-transform:uppercase}
+.price-row .tier{font-family:var(--serif);font-size:1.3rem;font-weight:400;display:inline-flex;align-items:center;gap:9px}
+.price-row .amt{font-family:var(--mono);font-size:.85rem;font-weight:500;color:var(--accent-deep);letter-spacing:.06em;text-transform:uppercase;flex-shrink:0}
+.tier-tip{position:relative}
+.info-dot{width:16px;height:16px;border-radius:50%;border:1px solid var(--ink-faint);color:var(--ink-faint);font-family:var(--sans);font-size:.68rem;line-height:1;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;cursor:help;transition:border-color .15s,color .15s}
+.tier-tip:hover .info-dot,.info-dot:focus{border-color:var(--accent);color:var(--accent);outline:none}
+.info-dot .tip{position:absolute;left:0;bottom:calc(100% + 10px);width:min(280px,80vw);background:var(--slate);color:var(--paper);font-family:var(--sans);font-size:.82rem;font-weight:400;line-height:1.45;letter-spacing:normal;text-transform:none;padding:13px 15px;border-radius:6px;opacity:0;transform:translateY(4px);pointer-events:none;transition:opacity .15s,transform .15s;z-index:5}
+.info-dot .tip::after{content:"";position:absolute;top:100%;left:14px;border:6px solid transparent;border-top-color:var(--slate)}
+.tier-tip:hover .tip,.info-dot:focus .tip{opacity:1;transform:translateY(0)}
+@media(max-width:680px){.info-dot .tip{left:-14px}}
 .founder-callout{margin-top:40px;padding:34px 36px;background:var(--paper-2);border-left:3px solid var(--accent);border-radius:0 6px 6px 0}
 @media(max-width:680px){.founder-callout{padding:24px 22px}}
 .founder-callout .fq{font-family:var(--serif);font-size:1.4rem;line-height:1.28;font-weight:400}
-.cta{text-align:center;padding:56px 24px;background:var(--paper-2);border:1px solid var(--line);border-radius:8px}
-.cta .kicker{display:block;margin-bottom:14px}
-.cta p{font-family:var(--serif);font-size:1.3rem;font-weight:400;color:var(--ink);max-width:44ch;margin:0 auto}
-.cta .reply-note{margin-top:16px;font-family:var(--mono);font-size:.76rem;letter-spacing:.06em;text-transform:uppercase;color:var(--accent-deep)}
+.cta{text-align:center;padding:clamp(48px,7vw,72px) 24px;background:var(--slate);border-radius:10px}
+.cta .kicker{display:block;margin-bottom:16px;color:#5C9BFF}
+.cta p{font-family:var(--serif);font-size:clamp(1.5rem,3.2vw,2rem);font-weight:400;color:var(--paper);max-width:34ch;margin:0 auto;line-height:1.25}
+.cta .reply-note{display:inline-block;margin-top:26px;font-family:var(--mono);font-size:.8rem;letter-spacing:.06em;text-transform:uppercase;color:var(--slate);background:var(--paper);padding:14px 26px;border-radius:100px}
 .tl{position:relative}
 .tl::before{content:"";position:absolute;left:7px;top:8px;bottom:8px;width:1px;background:var(--line)}
 .tl-item{position:relative;padding:0 0 34px 44px}
