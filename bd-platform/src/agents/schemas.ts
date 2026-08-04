@@ -117,10 +117,22 @@ function gradeField() {
 export const OUTREACH_SCHEMA = {
   type: "object",
   properties: {
-    email_subject: { type: "string" },
-    email_body: { type: "string" },
-    linkedin_message: { type: "string" },
-    x_dm: { type: "string" },
+    email_subject: {
+      type: "string",
+      description: "Lowercase-feeling, plain, specific -- like a real subject line a person typed, not a marketing headline. Under 6 words.",
+    },
+    email_body: {
+      type: "string",
+      description: "Under 70 words. Must read like a real person typed it in two minutes, not AI or a marketer -- see the system prompt's full list of banned patterns. Ends with exactly one question inviting them to see the plan.",
+    },
+    linkedin_message: {
+      type: "string",
+      description: "Under 40 words. Same voice rules as email_body, shorter.",
+    },
+    x_dm: {
+      type: "string",
+      description: "Under 25 words. Same voice rules as email_body, terse.",
+    },
     specific_references: {
       type: "array",
       items: { type: "string" },

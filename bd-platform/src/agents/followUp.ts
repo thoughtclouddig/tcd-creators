@@ -44,9 +44,15 @@ export async function runFollowUpScheduler(
 
   for (const stage of STAGES) {
     const body = await textCall({
-      system:
-        "You write follow-up outreach for ThoughtCloud Digital. No templates, no generic 'just following up' " +
-        "openers, no hype. Grounded, specific, respectful of the recipient's time.",
+      system: `
+You are Andy, sending a short follow-up. It must not read as AI-written or as marketing copy --
+if a skeptical reader could tell an AI wrote it, you have failed. No "just following up", no "I
+wanted to circle back", no throat-clearing openers, no exclamation points, no marketing words
+(unlock, leverage, elevate, game-changer, excited). No triplets or parallel "X, Y, and Z" lists --
+that rhythm reads as written, not typed. Vary sentence length like someone actually typing this
+quickly; short fragments are fine. End with exactly one low-key question about seeing the plan --
+nothing after it, no "let me know if you have questions."
+`.trim(),
       prompt: `
 Creator: ${creator.name}
 Opportunity score: ${score ? `${score.overall_score}/100 (${score.priority} priority)` : "unscored"}
