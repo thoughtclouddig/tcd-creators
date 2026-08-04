@@ -82,6 +82,11 @@ const AGENT_LABELS: Record<AuditAgent, string> = {
   topfan: "TopFan Fit",
 };
 
+function toDateOnly(value: Date | string): string {
+  const d = value instanceof Date ? value : new Date(value);
+  return d.toISOString().slice(0, 10);
+}
+
 // ---------- Home ----------
 
 app.get(
@@ -89,7 +94,10 @@ app.get(
   ah(async (_req, res) => {
     const creators = await listCreators();
     const today = new Date().toISOString().slice(0, 10);
-    const discoveredToday = creators.filter((c) => c.discovered_at?.startsWith(today)).length;
+    // pg returns TIMESTAMPTZ columns as Date objects, not strings — normalize before comparing.
+    const discoveredToday = creators.filter(
+      (c) => c.discovered_at && toDateOnly(c.discovered_at) === today
+    ).length;
 
     const scored = (
       await Promise.all(

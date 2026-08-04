@@ -25,7 +25,7 @@ export async function runCrmInit(creatorId: number) {
       close_probability_pct: PRIORITY_CLOSE_PROBABILITY[score.priority] ?? 10,
     });
   }
-  return getCrm(creatorId);
+  return await getCrm(creatorId);
 }
 
 function parseRevenueMidpoint(range: string): number | undefined {

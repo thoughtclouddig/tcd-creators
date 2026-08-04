@@ -19,8 +19,9 @@ export interface Creator {
   avg_views: number | null;
   growth_pct: number | null;
   source: string;
-  discovered_at: string;
-  updated_at: string;
+  // pg returns TIMESTAMPTZ columns as Date objects, not strings.
+  discovered_at: Date | string;
+  updated_at: Date | string;
 }
 
 export interface CreatorSeed {
