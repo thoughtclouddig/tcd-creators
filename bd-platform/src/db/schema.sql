@@ -68,7 +68,9 @@ CREATE TABLE IF NOT EXISTS proposals (
   creator_id             INTEGER NOT NULL REFERENCES creators(id) ON DELETE CASCADE,
   created_at              TIMESTAMPTZ DEFAULT now(),
   title                   TEXT,
-  html_path               TEXT,
+  html_content             TEXT,   -- source of truth, served directly -- the deployment's
+  markdown_content          TEXT,  -- local disk is ephemeral and does not survive a redeploy
+  html_path               TEXT,    -- best-effort local file copy, for local dev convenience only
   markdown_path            TEXT,
   pdf_path                 TEXT,
   opportunity_score_id      INTEGER REFERENCES opportunity_scores(id)
@@ -146,3 +148,5 @@ CREATE INDEX IF NOT EXISTS idx_followups_creator ON follow_ups(creator_id, sched
 -- needs its own ALTER TABLE ... IF NOT EXISTS line here to actually pick up the change.
 
 ALTER TABLE creators ADD COLUMN IF NOT EXISTS business_email TEXT;
+ALTER TABLE proposals ADD COLUMN IF NOT EXISTS html_content TEXT;
+ALTER TABLE proposals ADD COLUMN IF NOT EXISTS markdown_content TEXT;

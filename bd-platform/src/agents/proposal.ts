@@ -115,25 +115,37 @@ export async function runProposalGenerator(creatorId: number): Promise<ProposalO
   const html = renderProposalHtml(data);
   const markdown = renderProposalMarkdown(data);
 
+  // Local files are a best-effort convenience for local dev only -- the deployed app's disk
+  // is ephemeral and does not survive a redeploy, so html_content/markdown_content in the DB
+  // (below) is the actual source of truth the dashboard serves from.
   const slug = slugify(creator.name);
   const stamp = new Date().toISOString().slice(0, 10);
-  const dir = path.join(OUTPUT_DIR, slug);
-  fs.mkdirSync(dir, { recursive: true });
-  const htmlPath = path.join(dir, `${stamp}.html`);
-  const markdownPath = path.join(dir, `${stamp}.md`);
-  fs.writeFileSync(htmlPath, html, "utf-8");
-  fs.writeFileSync(markdownPath, markdown, "utf-8");
+  let htmlPath: string | undefined;
+  let markdownPath: string | undefined;
+  try {
+    const dir = path.join(OUTPUT_DIR, slug);
+    fs.mkdirSync(dir, { recursive: true });
+    htmlPath = path.join(dir, `${stamp}.html`);
+    markdownPath = path.join(dir, `${stamp}.md`);
+    fs.writeFileSync(htmlPath, html, "utf-8");
+    fs.writeFileSync(markdownPath, markdown, "utf-8");
+  } catch {
+    htmlPath = undefined;
+    markdownPath = undefined;
+  }
 
   await saveProposal(creatorId, score.id, {
     title: `Building the Future of ${creator.name}`,
+    html_content: html,
+    markdown_content: markdown,
     html_path: htmlPath,
     markdown_path: markdownPath,
   });
 
   return {
     title: `Building the Future of ${creator.name}`,
-    htmlPath,
-    markdownPath,
+    htmlPath: htmlPath ?? "",
+    markdownPath: markdownPath ?? "",
   };
 }
 
@@ -176,8 +188,14 @@ function collectTopRecommendations(
   for (const agent of REPORT_ORDER) {
     const row = byAgent[agent];
     if (!row) continue;
-    const recs = JSON.parse(row.recommendations_json || "[]") as ProposalRecommendation[];
-    all.push(...recs.filter((r) => r && r.title && r.detail));
+    let recs: unknown;
+    try {
+      recs = JSON.parse(row.recommendations_json || "[]");
+    } catch {
+      recs = [];
+    }
+    if (!Array.isArray(recs)) continue; // schema is a hint to Claude, not a guarantee
+    all.push(...(recs as ProposalRecommendation[]).filter((r) => r && r.title && r.detail));
   }
   return all.slice(0, 6);
 }

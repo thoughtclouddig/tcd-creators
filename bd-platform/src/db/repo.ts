@@ -261,16 +261,26 @@ export async function latestOpportunityScore(creatorId: number): Promise<any> {
 export async function saveProposal(
   creatorId: number,
   opportunityScoreId: number | null,
-  fields: { title: string; html_path?: string; markdown_path?: string; pdf_path?: string }
+  fields: {
+    title: string;
+    html_content: string;
+    markdown_content: string;
+    html_path?: string;
+    markdown_path?: string;
+    pdf_path?: string;
+  }
 ): Promise<number> {
   const row = await one<{ id: number }>(
-    `INSERT INTO proposals (creator_id, opportunity_score_id, title, html_path, markdown_path, pdf_path)
-     VALUES ($1,$2,$3,$4,$5,$6)
+    `INSERT INTO proposals
+      (creator_id, opportunity_score_id, title, html_content, markdown_content, html_path, markdown_path, pdf_path)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
      RETURNING id`,
     [
       creatorId,
       opportunityScoreId,
       fields.title,
+      fields.html_content,
+      fields.markdown_content,
       fields.html_path ?? null,
       fields.markdown_path ?? null,
       fields.pdf_path ?? null,

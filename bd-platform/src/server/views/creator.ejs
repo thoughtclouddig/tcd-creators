@@ -44,8 +44,17 @@
   <% } %>
 
   <% if (proposal) { %>
-  <div style="margin-bottom:48px">
+  <div style="margin-bottom:48px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
     <a class="proposal-link" href="/creators/<%= creator.id %>/proposal" target="_blank">Open Executive Proposal →</a>
+    <form method="POST" action="/creators/<%= creator.id %>/regenerate-proposal">
+      <button class="see-all" type="submit" style="background:none;border:none;cursor:pointer">Regenerate →</button>
+    </form>
+  </div>
+  <% } else if (score) { %>
+  <div style="margin-bottom:48px">
+    <form method="POST" action="/creators/<%= creator.id %>/regenerate-proposal">
+      <button class="btn" type="submit">Generate Executive Proposal →</button>
+    </form>
   </div>
   <% } %>
 

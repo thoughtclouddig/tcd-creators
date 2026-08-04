@@ -25,6 +25,7 @@ import {
 import { pool } from "../db/client.js";
 import { runCreatorPipeline, runFullAuditPipeline } from "../pipeline/runCreatorPipeline.js";
 import { runDiscoverySweep, DEFAULT_ICP_QUERIES } from "../agents/discoverySweep.js";
+import { runProposalGenerator } from "../agents/proposal.js";
 import type { AuditAgent, CreatorSeed } from "../types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -91,6 +92,19 @@ const AGENT_LABELS: Record<AuditAgent, string> = {
 function toDateOnly(value: Date | string): string {
   const d = value instanceof Date ? value : new Date(value);
   return d.toISOString().slice(0, 10);
+}
+
+// Claude's tool-use schema is a strong hint to the model, not a guarantee -- an audit's
+// findings/recommendations JSON occasionally comes back as something other than an array
+// (a single object, a string, etc). Parsing that into a template that immediately calls
+// .slice()/.forEach() on it crashes the whole page. Coerce to [] instead of trusting the shape.
+function safeJsonArray(raw: string | null | undefined): any[] {
+  try {
+    const parsed = JSON.parse(raw || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
 // ---------- Home ----------
@@ -240,6 +254,29 @@ app.post(
 );
 
 app.post(
+  "/creators/:id/regenerate-proposal",
+  ah(async (req, res) => {
+    const id = Number(req.params.id);
+    const creator = await getCreator(id);
+    if (!creator) {
+      res.status(404).send("Creator not found");
+      return;
+    }
+    const score = await latestOpportunityScore(id);
+    if (!score) {
+      res.status(400).send("No opportunity score yet — run the full audit first.");
+      return;
+    }
+    // Re-renders the proposal from already-computed audit/score data. Only re-writes the two
+    // short narrative passages (executive summary, closing letter) via Claude -- the audits,
+    // scoring, and everything else are reused as-is, so this is fast and cheap compared to
+    // the full pipeline. Synchronous (not fire-and-forget) since it only takes a few seconds.
+    await runProposalGenerator(id);
+    res.redirect(`/creators/${id}`);
+  })
+);
+
+app.post(
   "/creators/:id/business-email",
   ah(async (req, res) => {
     const id = Number(req.params.id);
@@ -319,7 +356,7 @@ app.get(
       score: a.score,
       grade: a.grade,
       summary: a.summary,
-      findings: JSON.parse(a.findings_json || "[]"),
+      findings: safeJsonArray(a.findings_json),
     }));
 
     res.render("creator", {
@@ -341,11 +378,13 @@ app.get(
   ah(async (req, res) => {
     const id = Number(req.params.id);
     const proposal = await latestProposal(id);
-    if (!proposal?.html_path || !fs.existsSync(proposal.html_path)) {
+    // html_content in the database is the source of truth -- local disk (html_path) is a
+    // best-effort convenience for local dev only and does not survive a redeploy.
+    if (!proposal?.html_content) {
       res.status(404).send("No proposal generated for this creator yet.");
       return;
     }
-    res.sendFile(path.resolve(proposal.html_path));
+    res.type("html").send(proposal.html_content);
   })
 );
 
