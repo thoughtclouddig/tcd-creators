@@ -7,6 +7,7 @@
  */
 import { getCreator, latestOpportunityScore, saveFollowUp } from "../db/repo.js";
 import { textCall } from "../lib/claude.js";
+import { BANNED_JARGON_CATEGORIES, SENTENCE_STYLE_RULES } from "../lib/writingStyle.js";
 
 const STAGES: { dayOffset: 7 | 21 | 60; angle: string }[] = [
   {
@@ -48,21 +49,26 @@ export async function runFollowUpScheduler(
 You are Andy, sending a short follow-up. It must not read as AI-written or as marketing copy --
 if a skeptical reader could tell an AI wrote it, you have failed. No "just following up", no "I
 wanted to circle back", no throat-clearing openers, no vague temporal scene-setters ("Been
-following your recent run", "Circling back on your recent episode"), no exclamation points, no
-marketing words (unlock, leverage, elevate, game-changer, excited, pattern, strategy, recent run).
-No triplets or parallel "X, Y, and Z" lists -- that rhythm reads as written, not typed. Vary
-sentence length like someone actually typing this quickly; short fragments are fine. Open directly
-on the actual point, never on a sentence about having been aware of them in general.
+following your recent run", "Circling back on your recent episode"). Open directly on the actual
+point, never on a sentence about having been aware of them in general.
+
+BANNED WORDS AND PHRASES, BY CATEGORY:
+${BANNED_JARGON_CATEGORIES}
+
+${SENTENCE_STYLE_RULES}
 
 Do not fabricate. You were not given performance data or any comparison between videos/posts --
-never claim something is "trending," "outperforming," or part of a "pattern." Never do the fake-
-personalization move where you name-drop a detail then pivot into a manufactured insight about
-their content strategy -- that always reads as fake, even when each sentence looks fine on its own.
-Reference at most ONE piece of their content per message, never compare two.
+never claim something is "trending" or part of a "pattern." Never do the fake-personalization move
+where you name-drop a detail then pivot into a manufactured insight about their content strategy
+-- that always reads as fake, even when each sentence looks fine on its own. Reference at most ONE
+piece of their content per message, never compare two.
 
 The original outreach offered to send over notes Andy wrote about one specific episode -- keep
 that same pretext. End with exactly one low-key question about sending those notes over (not "the
 plan," not a proposal) -- nothing after it, no "let me know if you have questions."
+
+Before finalizing, check every sentence against the banned list and the 15-word limit. Rewrite
+anything that violates either.
 `.trim(),
       prompt: `
 Creator: ${creator.name}

@@ -141,3 +141,21 @@ export const OUTREACH_SCHEMA = {
   },
   required: ["email_subject", "email_body", "linkedin_message", "x_dm", "specific_references"],
 } as const;
+
+// Output of the editor pass -- same four text fields, no specific_references (the editor isn't
+// re-deriving evidence, just rewriting against the style checklist).
+export const OUTREACH_EDIT_SCHEMA = {
+  type: "object",
+  properties: {
+    email_subject: { type: "string" },
+    email_body: { type: "string" },
+    linkedin_message: { type: "string" },
+    x_dm: { type: "string" },
+    changes_made: {
+      type: "array",
+      items: { type: "string" },
+      description: "Short list of what you actually changed and why (e.g. 'replaced flag with mention', 'split a 22-word sentence into two'). Empty array if the draft already passed clean.",
+    },
+  },
+  required: ["email_subject", "email_body", "linkedin_message", "x_dm", "changes_made"],
+} as const;

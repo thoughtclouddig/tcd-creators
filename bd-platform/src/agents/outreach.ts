@@ -15,7 +15,8 @@ import {
 } from "../db/repo.js";
 import { fetchSiteSnapshot } from "../lib/website.js";
 import { structuredCall } from "../lib/claude.js";
-import { OUTREACH_SCHEMA } from "./schemas.js";
+import { OUTREACH_SCHEMA, OUTREACH_EDIT_SCHEMA } from "./schemas.js";
+import { BANNED_JARGON_CATEGORIES, SENTENCE_STYLE_RULES } from "../lib/writingStyle.js";
 
 const youtube = google.youtube("v3");
 
@@ -85,19 +86,14 @@ BANNED, in any message, ever:
 - Any sentence shaped like "[detail] is doing/reveals/suggests something about your content/
   strategy/audience/retention" -- see above
 - Comparing or referencing more than one piece of their content in the same message
-- Triplets and parallel lists ("X, Y, and Z" rhythm reads as written, not typed)
-- Em-dash used as a crutch for every other clause
-- Exclamation points
-- Marketing/corporate or analyst words: unlock, leverage, elevate, dive in, game-changer,
-  synergy, ecosystem, journey, passionate, thrilled, excited, empower, seamless, pattern,
-  outperforming, strategy, angle, lean into, contrast, retention, recent run
 - Stacked rhetorical questions
 - Any pitch: never list services, features, or capabilities; never say "we can help you with";
   never mention "the plan," a proposal, or ThoughtCloud by name
 
-SENTENCE LENGTH -- HARD LIMIT: No sentence over about 15 words. If a thought needs more than
-that, it is two sentences, not one long sentence stitched together with commas or dashes. Real
-people typing quickly write short sentences. One idea per sentence, always.
+BANNED WORDS AND PHRASES, BY CATEGORY (a rewrite pass will check every word against these):
+${BANNED_JARGON_CATEGORIES}
+
+${SENTENCE_STYLE_RULES}
 
 GREETING -- REQUIRED, NOT THROAT-CLEARING: Email and LinkedIn must open with a plain greeting
 using the creator's first name: "Hi [FirstName]," or "Hey [FirstName] --" on its own, then the
@@ -158,22 +154,73 @@ specific references you used.
     maxTokens: 1500,
   });
 
-  await saveOutreach(creatorId, "email", payload.email_body, {
-    subject: payload.email_subject,
-    basedOn: payload.specific_references,
+  // Editor pass -- a separate call whose ONLY job is checking the draft against the style
+  // checklist and rewriting violations. Asking one call to be creative, specific, AND hold 20+
+  // style rules at once is exactly how words like "flag" kept slipping through; a dedicated
+  // second pass with nothing else to do is far more reliable at actually enforcing a checklist.
+  const edited = await structuredCall<{
+    email_subject: string;
+    email_body: string;
+    linkedin_message: string;
+    x_dm: string;
+    changes_made: string[];
+  }>({
+    system: `
+You are a strict editor. You do not write outreach -- you take an existing draft and rewrite ONLY
+the parts that violate the checklist below. Keep every real detail, claim, and opinion the draft
+already has; do not soften the opinion or make it vaguer. Your only job is fixing violations.
+
+CHECKLIST:
+${BANNED_JARGON_CATEGORIES}
+
+${SENTENCE_STYLE_RULES}
+
+Also require:
+- Email and LinkedIn must open with "Hi [FirstName]," using the creator's first name. X DM: no
+  greeting needed.
+- Exactly one question at the very end, offering to send over "what I wrote" / "the notes" --
+  never "the plan" or a proposal.
+- No throat-clearing opener ("I hope this finds you well", "I wanted to reach out").
+
+Go through each of the four fields one at a time. Read every sentence. If a sentence contains a
+banned word/phrase, exceeds ~15 words, or violates the greeting/ending rules, rewrite that
+sentence -- keep the rest of the message as close to the original as possible. If a field already
+passes clean, return it unchanged. List what you actually changed in changes_made.
+`.trim(),
+    prompt: `
+Creator's first name: ${creator.name.split(" ")[0]}
+
+DRAFT TO EDIT:
+Subject: ${payload.email_subject}
+Email: ${payload.email_body}
+LinkedIn: ${payload.linkedin_message}
+X DM: ${payload.x_dm}
+
+Return the edited version of all four fields.
+`.trim(),
+    schema: OUTREACH_EDIT_SCHEMA,
+    toolName: "emit_edited_outreach",
+    maxTokens: 1200,
   });
-  await saveOutreach(creatorId, "linkedin", payload.linkedin_message, {
-    basedOn: payload.specific_references,
+
+  const references = [...payload.specific_references, ...edited.changes_made.map((c) => `edit: ${c}`)];
+
+  await saveOutreach(creatorId, "email", edited.email_body, {
+    subject: edited.email_subject,
+    basedOn: references,
   });
-  await saveOutreach(creatorId, "x_dm", payload.x_dm, {
-    basedOn: payload.specific_references,
+  await saveOutreach(creatorId, "linkedin", edited.linkedin_message, {
+    basedOn: references,
+  });
+  await saveOutreach(creatorId, "x_dm", edited.x_dm, {
+    basedOn: references,
   });
 
   return {
-    emailSubject: payload.email_subject,
-    emailBody: payload.email_body,
-    linkedinMessage: payload.linkedin_message,
-    xDm: payload.x_dm,
+    emailSubject: edited.email_subject,
+    emailBody: edited.email_body,
+    linkedinMessage: edited.linkedin_message,
+    xDm: edited.x_dm,
     specificReferences: payload.specific_references,
   };
 }
