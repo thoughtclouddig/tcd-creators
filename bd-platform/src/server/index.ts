@@ -27,6 +27,8 @@ import { pool } from "../db/client.js";
 import { runCreatorPipeline, runFullAuditPipeline } from "../pipeline/runCreatorPipeline.js";
 import { runDiscoverySweep, DEFAULT_ICP_QUERIES } from "../agents/discoverySweep.js";
 import { runProposalGenerator } from "../agents/proposal.js";
+import { runOutreachWriter } from "../agents/outreach.js";
+import { runFollowUpScheduler } from "../agents/followUp.js";
 import type { AuditAgent, CreatorSeed } from "../types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -332,6 +334,22 @@ app.post(
     // scoring, and everything else are reused as-is, so this is fast and cheap compared to
     // the full pipeline. Synchronous (not fire-and-forget) since it only takes a few seconds.
     await runProposalGenerator(id);
+    res.redirect(`/creators/${id}`);
+  })
+);
+
+app.post(
+  "/creators/:id/regenerate-outreach",
+  ah(async (req, res) => {
+    const id = Number(req.params.id);
+    const creator = await getCreator(id);
+    if (!creator) {
+      res.status(404).send("Creator not found");
+      return;
+    }
+    // Synchronous -- 1 outreach call + 3 follow-up calls, a few seconds, not the full pipeline.
+    const outcome = await runOutreachWriter(id);
+    await runFollowUpScheduler(id, outcome.emailBody);
     res.redirect(`/creators/${id}`);
   })
 );

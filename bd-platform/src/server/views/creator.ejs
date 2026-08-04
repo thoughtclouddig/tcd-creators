@@ -95,6 +95,9 @@
     <div class="section-head">
       <h2>Outreach Drafts</h2>
       <span class="badge badge-warn">Not sent — draft only</span>
+      <form method="POST" action="/creators/<%= creator.id %>/regenerate-outreach">
+        <button class="see-all" type="submit" style="background:none;border:none;cursor:pointer">Regenerate →</button>
+      </form>
     </div>
     <p style="color:var(--ink-faint);font-size:.85rem;margin-bottom:20px;margin-top:-10px">Text only. Nothing here is connected to email, X, or LinkedIn — copy and send manually if you want to use it.</p>
     <div class="card">
