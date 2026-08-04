@@ -6,6 +6,7 @@ import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
   allLatestAudits,
+  finishDiscoverySweep,
   getCreator,
   getCrm,
   latestOpportunityScore,
@@ -16,7 +17,9 @@ import {
   listOutreach,
   listPipeline,
   listUnauditedCreators,
+  recentDiscoverySweeps,
   recentPipelineRuns,
+  startDiscoverySweep,
 } from "../db/repo.js";
 import { pool } from "../db/client.js";
 import { runCreatorPipeline, runFullAuditPipeline } from "../pipeline/runCreatorPipeline.js";
@@ -167,31 +170,55 @@ app.get(
 
 // ---------- Discover ----------
 
-app.get("/discover", (_req, res) => {
-  res.render("discover", { queued: null, sweepQueued: false, defaultQueries: DEFAULT_ICP_QUERIES });
-});
+app.get(
+  "/discover",
+  ah(async (_req, res) => {
+    const sweeps = await recentDiscoverySweeps(5);
+    res.render("discover", {
+      queued: null,
+      sweepQueued: false,
+      defaultQueries: DEFAULT_ICP_QUERIES,
+      sweeps,
+    });
+  })
+);
 
-app.post("/discover/sweep", (req, res) => {
-  const body = req.body as Record<string, string>;
-  const queries = body.queries
-    ? body.queries.split("\n").map((q) => q.trim()).filter(Boolean)
-    : undefined;
+app.post(
+  "/discover/sweep",
+  ah(async (req, res) => {
+    const body = req.body as Record<string, string>;
+    const queries = body.queries
+      ? body.queries.split("\n").map((q) => q.trim()).filter(Boolean)
+      : DEFAULT_ICP_QUERIES;
 
-  // Fire and forget — a sweep across several queries plus per-candidate stats lookups takes
-  // a while, but unlike the full audit pipeline it's cheap (YouTube API only, no Claude).
-  runDiscoverySweep({ queries }).then(
-    (outcome) => {
-      console.log(
-        `Discovery sweep done: ${outcome.newCandidates.length} new candidates ` +
-          `(${outcome.channelsFound} found, ${outcome.alreadyKnown} already known, ${outcome.outOfRange} out of range)`
-      );
-      if (outcome.warnings.length) console.warn("Sweep warnings:", outcome.warnings);
-    },
-    (err) => console.error("Discovery sweep failed:", err)
-  );
+    const sweepId = await startDiscoverySweep(queries);
 
-  res.render("discover", { queued: null, sweepQueued: true, defaultQueries: DEFAULT_ICP_QUERIES });
-});
+    // Fire and forget — a sweep across several queries plus per-candidate stats lookups takes
+    // a while, but unlike the full audit pipeline it's cheap (YouTube API only, no Claude).
+    // The sweep run row is what makes progress visible on the Discover page instead of only
+    // a server console log nobody watching the deployed app can see.
+    runDiscoverySweep({ queries }).then(
+      (outcome) =>
+        finishDiscoverySweep(sweepId, "completed", {
+          channels_found: outcome.channelsFound,
+          already_known: outcome.alreadyKnown,
+          out_of_range: outcome.outOfRange,
+          new_candidate_names: outcome.newCandidates.map((c) => c.creator.name),
+          warnings: outcome.warnings,
+        }),
+      (err) =>
+        finishDiscoverySweep(sweepId, "failed", { warnings: [String(err?.message ?? err)] })
+    );
+
+    const sweeps = await recentDiscoverySweeps(5);
+    res.render("discover", {
+      queued: null,
+      sweepQueued: true,
+      defaultQueries: DEFAULT_ICP_QUERIES,
+      sweeps,
+    });
+  })
+);
 
 app.post(
   "/creators/:id/audit",

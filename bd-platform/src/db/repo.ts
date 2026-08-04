@@ -418,3 +418,49 @@ export async function recentPipelineRuns(limit = 20): Promise<any[]> {
     [limit]
   );
 }
+
+// ---------- Discovery sweeps ----------
+
+export async function startDiscoverySweep(queries: string[]): Promise<number> {
+  const row = await one<{ id: number }>(
+    `INSERT INTO discovery_sweeps (queries_json) VALUES ($1) RETURNING id`,
+    [JSON.stringify(queries)]
+  );
+  return row!.id;
+}
+
+export async function finishDiscoverySweep(
+  sweepId: number,
+  status: "completed" | "failed",
+  fields: {
+    channels_found?: number;
+    already_known?: number;
+    out_of_range?: number;
+    new_candidate_names?: string[];
+    warnings?: string[];
+  }
+): Promise<void> {
+  await query(
+    `UPDATE discovery_sweeps SET
+       status = $1, finished_at = now(),
+       channels_found = $2, already_known = $3, out_of_range = $4,
+       new_candidate_names = $5, warnings_json = $6
+     WHERE id = $7`,
+    [
+      status,
+      fields.channels_found ?? null,
+      fields.already_known ?? null,
+      fields.out_of_range ?? null,
+      JSON.stringify(fields.new_candidate_names ?? []),
+      JSON.stringify(fields.warnings ?? []),
+      sweepId,
+    ]
+  );
+}
+
+export async function recentDiscoverySweeps(limit = 10): Promise<any[]> {
+  return query(
+    `SELECT * FROM discovery_sweeps ORDER BY started_at DESC LIMIT $1`,
+    [limit]
+  );
+}

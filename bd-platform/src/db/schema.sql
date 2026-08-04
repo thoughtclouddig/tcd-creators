@@ -118,6 +118,19 @@ CREATE TABLE IF NOT EXISTS pipeline_runs (
   log_json         TEXT DEFAULT '[]'
 );
 
+CREATE TABLE IF NOT EXISTS discovery_sweeps (
+  id                SERIAL PRIMARY KEY,
+  started_at         TIMESTAMPTZ DEFAULT now(),
+  finished_at         TIMESTAMPTZ,
+  status              TEXT DEFAULT 'running', -- running | completed | failed
+  queries_json         TEXT DEFAULT '[]',
+  channels_found        INTEGER,
+  already_known          INTEGER,
+  out_of_range            INTEGER,
+  new_candidate_names       TEXT DEFAULT '[]',
+  warnings_json             TEXT DEFAULT '[]'
+);
+
 CREATE INDEX IF NOT EXISTS idx_audits_creator ON audits(creator_id, agent);
 CREATE INDEX IF NOT EXISTS idx_snapshots_creator ON audience_snapshots(creator_id, captured_at);
 CREATE INDEX IF NOT EXISTS idx_outreach_creator ON outreach(creator_id);
