@@ -87,41 +87,6 @@
     <% } %>
   </div>
 
-  <div class="section grid grid-2">
-    <div>
-      <div class="section-head"><h2>Recent Reports</h2></div>
-      <% if (recentReports.length === 0) { %>
-        <div class="empty">No proposals generated yet.</div>
-      <% } else { %>
-      <table>
-        <tbody>
-          <% recentReports.forEach(function(p) { %>
-          <tr>
-            <td class="name-cell"><%= p.title %><br><span class="muted" style="font-size:.78rem"><%= p.created_at %></span></td>
-            <td><a class="proposal-link" href="/creators/<%= p.creator_id %>/proposal" target="_blank">View Proposal →</a></td>
-          </tr>
-          <% }) %>
-        </tbody>
-      </table>
-      <% } %>
-    </div>
-    <div>
-      <div class="section-head"><h2>Recent Discoveries</h2></div>
-      <% if (recentCreators.length === 0) { %>
-        <div class="empty">No creators discovered yet. <a class="see-all" href="/discover">Add one →</a></div>
-      <% } else { %>
-      <table>
-        <tbody>
-          <% recentCreators.forEach(function(c) { %>
-          <tr>
-            <td class="name-cell"><a href="/creators/<%= c.id %>"><%= c.name %></a><br><span class="muted" style="font-size:.78rem"><%= c.source %> · <%= c.discovered_at %></span></td>
-          </tr>
-          <% }) %>
-        </tbody>
-      </table>
-      <% } %>
-    </div>
-  </div>
 
 </main>
 </body>

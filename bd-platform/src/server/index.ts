@@ -132,9 +132,9 @@ app.get(
 
     const highPriority = scored.filter((x) => x.score.priority === "High").length;
 
-    const proposals = (
-      await pool.query(`SELECT * FROM proposals ORDER BY created_at DESC LIMIT 8`)
-    ).rows;
+    const proposalCount = (
+      await pool.query(`SELECT COUNT(*)::int AS count FROM proposals`)
+    ).rows[0].count;
 
     const pipelineRows = await listPipeline();
     const pipelineValueK = Math.round(
@@ -153,14 +153,12 @@ app.get(
         totalCreators: creators.length,
         discoveredToday,
         highPriority,
-        proposalsGenerated: proposals.length,
+        proposalsGenerated: proposalCount,
         pipelineValueK,
         activeInPipeline: pipelineRows.length,
         needsAudit: unaudited.length,
       },
       topOpportunities,
-      recentReports: proposals,
-      recentCreators: creators.slice(0, 8),
       unaudited,
     });
   })
