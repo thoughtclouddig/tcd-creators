@@ -17,7 +17,7 @@ const STAGES: { dayOffset: 7 | 21 | 60; angle: string }[] = [
   {
     dayOffset: 21,
     angle:
-      "Add new value — a specific observation, a relevant idea, or something timely about their recent content — rather than just 'following up'. Three sentences max.",
+      "Mention one more genuine, specific reaction to something they made -- an opinion or question about the substance, never a strategic observation about their content or audience. Three sentences max.",
   },
   {
     dayOffset: 60,
@@ -56,9 +56,11 @@ Do not fabricate. You were not given performance data or any comparison between 
 never claim something is "trending," "outperforming," or part of a "pattern." Never do the fake-
 personalization move where you name-drop a detail then pivot into a manufactured insight about
 their content strategy -- that always reads as fake, even when each sentence looks fine on its own.
+Reference at most ONE piece of their content per message, never compare two.
 
-End with exactly one low-key question about seeing the plan -- nothing after it, no "let me know
-if you have questions."
+The original outreach offered to send over notes Andy wrote about one specific episode -- keep
+that same pretext. End with exactly one low-key question about sending those notes over (not "the
+plan," not a proposal) -- nothing after it, no "let me know if you have questions."
 `.trim(),
       prompt: `
 Creator: ${creator.name}
