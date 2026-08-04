@@ -34,10 +34,17 @@ export interface ProposalData {
 
 export function renderProposalHtml(d: ProposalData): string {
   const title = `Building the Future of ${escapeHtml(d.creatorName)}`;
-  return `<title>${title} — ThoughtCloud Digital</title>
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${title} — ThoughtCloud Digital</title>
 <style>
 ${BASE_CSS}
 </style>
+</head>
+<body>
 ${WORDMARK_SVG}
 <nav id="topnav">
   <div class="nav-inner wrap">
@@ -218,6 +225,8 @@ ${WORDMARK_SVG}
   },{threshold:.12});
   document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
 </script>
+</body>
+</html>
 `;
 }
 
@@ -355,6 +364,7 @@ section{padding-top:var(--sec-pad);padding-bottom:var(--sec-pad);border-top:1px 
 .stack{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
 @media(max-width:680px){.stack{grid-template-columns:1fr}}
 .stack-item{background:var(--paper);padding:32px 30px}
+@media(max-width:680px){.stack-item{padding:26px 24px}}
 .stack-item .si-num{font-family:var(--mono);font-size:.78rem;color:var(--accent);letter-spacing:.06em;display:block;margin-bottom:16px}
 .stack-item h3{font-size:1.25rem;font-weight:400;margin-bottom:11px}
 .stack-item p{font-size:.95rem;color:var(--ink-soft);line-height:1.55}
@@ -363,6 +373,7 @@ section{padding-top:var(--sec-pad);padding-bottom:var(--sec-pad);border-top:1px 
 .price-row .tier{font-family:var(--serif);font-size:1.3rem;font-weight:400}
 .price-row .amt{font-family:var(--mono);font-size:.85rem;font-weight:500;color:var(--accent-deep);letter-spacing:.06em;text-transform:uppercase}
 .founder-callout{margin-top:40px;padding:34px 36px;background:var(--paper-2);border-left:3px solid var(--accent);border-radius:0 6px 6px 0}
+@media(max-width:680px){.founder-callout{padding:24px 22px}}
 .founder-callout .fq{font-family:var(--serif);font-size:1.4rem;line-height:1.28;font-weight:400}
 .tl{position:relative}
 .tl::before{content:"";position:absolute;left:7px;top:8px;bottom:8px;width:1px;background:var(--line)}
@@ -377,9 +388,10 @@ section{padding-top:var(--sec-pad);padding-bottom:var(--sec-pad);border-top:1px 
 .tasklist li{padding:14px 0 14px 28px;position:relative;border-bottom:1px solid var(--line);font-size:.99rem;color:var(--ink-soft)}
 .tasklist li::before{content:"\\2192";position:absolute;left:0;color:var(--accent);font-family:var(--mono)}
 .comp-card{background:var(--paper-2);border:1px solid var(--line);border-radius:8px;padding:34px}
+@media(max-width:680px){.comp-card{padding:24px}}
 .comp-card h3{font-size:1.4rem;font-weight:400;margin-bottom:10px}
 .comp-card ul{list-style:none;margin-top:22px}
-.comp-card li{font-size:.95rem;color:var(--ink-soft);padding:11px 0;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:16px}
+.comp-card li{font-size:.95rem;color:var(--ink-soft);padding:11px 0;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
 .comp-card li span:first-child{color:var(--ink);font-weight:500;white-space:nowrap}
 .client-wall{border-top:1px solid var(--line);margin-top:44px}
 .client-row{display:flex;justify-content:space-between;align-items:baseline;gap:24px;padding:32px 2px;border-bottom:1px solid var(--line)}
