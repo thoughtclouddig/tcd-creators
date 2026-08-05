@@ -7,7 +7,12 @@
  */
 import { getCreator, latestOpportunityScore, saveFollowUp } from "../db/repo.js";
 import { textCall } from "../lib/claude.js";
-import { BANNED_JARGON_CATEGORIES, SENTENCE_STYLE_RULES, INTEGRITY_RULES } from "../lib/writingStyle.js";
+import {
+  BANNED_JARGON_CATEGORIES,
+  SENTENCE_STYLE_RULES,
+  INTEGRITY_RULES,
+  scanForViolations,
+} from "../lib/writingStyle.js";
 
 const STAGES: { dayOffset: 7 | 21 | 60; angle: string }[] = [
   {
@@ -81,9 +86,24 @@ Return only the message body, no subject line.
       maxTokens: 300,
     });
 
+    // Same deterministic backstop as Agent 12 -- prose instructions alone weren't reliably
+    // catching terms like "plan" in production. One targeted correction pass if needed.
+    let finalBody = body;
+    const violations = scanForViolations({ body });
+    if (violations.length > 0) {
+      finalBody = await textCall({
+        system:
+          "You are a strict corrector. Rewrite ONLY the sentence(s) containing the banned " +
+          "terms listed below so those terms (and close synonyms in the same category) no " +
+          "longer appear. Keep every other sentence exactly as it is.",
+        prompt: `Message:\n${body}\n\nBanned terms found (must not appear in your output):\n${violations.map((v) => `- "${v.term}"`).join("\n")}\n\nReturn the corrected message only.`,
+        maxTokens: 300,
+      });
+    }
+
     const scheduledDate = addDays(new Date(), stage.dayOffset).toISOString().slice(0, 10);
-    await saveFollowUp(creatorId, stage.dayOffset, scheduledDate, body);
-    outcomes.push({ dayOffset: stage.dayOffset, scheduledDate, body });
+    await saveFollowUp(creatorId, stage.dayOffset, scheduledDate, finalBody);
+    outcomes.push({ dayOffset: stage.dayOffset, scheduledDate, body: finalBody });
   }
 
   return outcomes;

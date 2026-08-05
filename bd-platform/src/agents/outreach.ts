@@ -16,7 +16,20 @@ import {
 import { fetchSiteSnapshot } from "../lib/website.js";
 import { structuredCall } from "../lib/claude.js";
 import { OUTREACH_SCHEMA, OUTREACH_EDIT_SCHEMA } from "./schemas.js";
-import { BANNED_JARGON_CATEGORIES, SENTENCE_STYLE_RULES, INTEGRITY_RULES } from "../lib/writingStyle.js";
+import {
+  BANNED_JARGON_CATEGORIES,
+  SENTENCE_STYLE_RULES,
+  INTEGRITY_RULES,
+  scanForViolations,
+  type StyleViolation,
+} from "../lib/writingStyle.js";
+
+type OutreachFields = {
+  email_subject: string;
+  email_body: string;
+  linkedin_message: string;
+  x_dm: string;
+};
 
 const youtube = google.youtube("v3");
 
@@ -207,26 +220,89 @@ Return the edited version of all four fields.
     maxTokens: 1200,
   });
 
-  const references = [...payload.specific_references, ...edited.changes_made.map((c) => `edit: ${c}`)];
+  // Deterministic backstop: the two prose-instruction passes above still let specific banned
+  // terms through in production ("plan", comparison phrasing) despite being explicitly told not
+  // to. Scan the actual output text and force targeted corrections until it's clean or we've
+  // tried twice -- this is a literal string check, not another "please don't" instruction.
+  let current: OutreachFields = {
+    email_subject: edited.email_subject,
+    email_body: edited.email_body,
+    linkedin_message: edited.linkedin_message,
+    x_dm: edited.x_dm,
+  };
+  const correctionLog: string[] = [];
 
-  await saveOutreach(creatorId, "email", edited.email_body, {
-    subject: edited.email_subject,
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const violations = scanForViolations(current);
+    if (violations.length === 0) break;
+    correctionLog.push(
+      `correction pass ${attempt + 1}: found ${violations.map((v) => `"${v.term}" in ${v.field}`).join(", ")}`
+    );
+    current = await runCorrectionPass(current, violations);
+  }
+
+  const finalViolations = scanForViolations(current);
+  if (finalViolations.length > 0) {
+    correctionLog.push(
+      `UNRESOLVED after 2 correction passes: ${finalViolations.map((v) => `"${v.term}" in ${v.field}`).join(", ")}`
+    );
+  }
+
+  const references = [
+    ...payload.specific_references,
+    ...edited.changes_made.map((c) => `edit: ${c}`),
+    ...correctionLog,
+  ];
+
+  await saveOutreach(creatorId, "email", current.email_body, {
+    subject: current.email_subject,
     basedOn: references,
   });
-  await saveOutreach(creatorId, "linkedin", edited.linkedin_message, {
+  await saveOutreach(creatorId, "linkedin", current.linkedin_message, {
     basedOn: references,
   });
-  await saveOutreach(creatorId, "x_dm", edited.x_dm, {
+  await saveOutreach(creatorId, "x_dm", current.x_dm, {
     basedOn: references,
   });
 
   return {
-    emailSubject: edited.email_subject,
-    emailBody: edited.email_body,
-    linkedinMessage: edited.linkedin_message,
-    xDm: edited.x_dm,
+    emailSubject: current.email_subject,
+    emailBody: current.email_body,
+    linkedinMessage: current.linkedin_message,
+    xDm: current.x_dm,
     specificReferences: payload.specific_references,
   };
+}
+
+/** Targeted, deterministic-violation-driven correction call -- cites the exact terms found. */
+async function runCorrectionPass(
+  current: OutreachFields,
+  violations: StyleViolation[]
+): Promise<OutreachFields> {
+  const violationList = violations.map((v) => `- "${v.term}" appears in ${v.field}`).join("\n");
+  return structuredCall<OutreachFields>({
+    system: `
+You are a strict corrector. You will be given a message and an exact list of banned terms found
+in it verbatim. Rewrite ONLY the sentence(s) containing each banned term so that term (and close
+synonyms in the same category) no longer appears anywhere in the output. Keep every other
+sentence exactly as it is. Do not reintroduce any of these terms.
+`.trim(),
+    prompt: `
+DRAFT:
+Subject: ${current.email_subject}
+Email: ${current.email_body}
+LinkedIn: ${current.linkedin_message}
+X DM: ${current.x_dm}
+
+BANNED TERMS FOUND (must not appear anywhere in your output):
+${violationList}
+
+Return corrected versions of all four fields.
+`.trim(),
+    schema: OUTREACH_EDIT_SCHEMA,
+    toolName: "emit_corrected_outreach",
+    maxTokens: 1200,
+  });
 }
 
 async function fetchRecentVideoTitles(channelId: string | null): Promise<string[]> {

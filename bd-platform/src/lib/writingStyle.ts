@@ -57,3 +57,51 @@ export const INTEGRITY_RULES = `
   If a message ends with "want to see the plan" or similar, that is describing something that
   does not exist yet and must be rewritten to reference the notes instead.
 `.trim();
+
+// Prose instructions alone kept failing in production (the model would follow most rules and
+// still slip in "plan" or a content comparison). This is a deterministic backstop: a literal
+// word/phrase scan run on the model's actual output after it's generated, not another prompt
+// asking it to please not do the thing. Every entry here is a term that has ACTUALLY appeared
+// in a real generated message despite being explicitly banned in the prompt.
+const HARD_BANNED_TERMS = [
+  "plan", "pattern", "strategy", "flag", "flagging", "lane", "contrast", "retention", "angle",
+  "leverage", "unlock", "elevate", "synergy", "ecosystem", "outperform", "outperforming",
+  "trend", "trending", "insight", "signal", "data point", "key takeaway", "double down",
+];
+
+// Comparison phrasing that implies "vs. your other content" without necessarily naming a second
+// title -- "most of your street stuff doesn't" never says a second video's name but is still a
+// forbidden comparison to the rest of the creator's catalog.
+const COMPARISON_PHRASE_PATTERNS = [
+  /\bmost of your\b/i,
+  /\bunlike your\b/i,
+  /\bcompared to your\b/i,
+  /\bdifferent (from|than) (the|your)\b/i,
+  /\byour (other|usual|typical)\b/i,
+  /\bthe other (video|episode|clip|post)/i,
+  /\bworth building (around|on)\b/i,
+];
+
+export interface StyleViolation {
+  field: string;
+  term: string;
+}
+
+/** Deterministic post-generation check -- returns every hard violation found, field by field. */
+export function scanForViolations(
+  fields: Record<string, string>
+): StyleViolation[] {
+  const violations: StyleViolation[] = [];
+  for (const [field, text] of Object.entries(fields)) {
+    if (!text) continue;
+    for (const term of HARD_BANNED_TERMS) {
+      const re = new RegExp(`\\b${term.replace(/\s+/g, "\\s+")}\\b`, "i");
+      if (re.test(text)) violations.push({ field, term });
+    }
+    for (const pattern of COMPARISON_PHRASE_PATTERNS) {
+      const match = text.match(pattern);
+      if (match) violations.push({ field, term: match[0] });
+    }
+  }
+  return violations;
+}
