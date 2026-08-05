@@ -67,23 +67,26 @@ const HARD_BANNED_TERMS = [
   "plan", "pattern", "strategy", "flag", "flagging", "lane", "contrast", "retention", "angle",
   "leverage", "unlock", "elevate", "synergy", "ecosystem", "outperform", "outperforming",
   "trend", "trending", "insight", "signal", "data point", "key takeaway", "double down",
+  "scaling", "scale beyond", "powerful platform",
   // exact PROHIBITED_PHRASES from the outreach spec -- checked verbatim, not just described
   "hope you're doing well", "hope this finds you well", "i came across your profile",
-  "wanted to reach out", "touch base", "circle back", "scale your business", "unlock revenue",
-  "take things to the next level", "leverage your audience", "quick call", "quick chat",
-  "game changing", "end-to-end", "best-in-class", "following up", "checking in",
+  "i came across", "i noticed", "thought i'd connect", "wanted to reach out", "touch base",
+  "circle back", "scale your business", "unlock revenue", "take things to the next level",
+  "take it to the next level", "leverage your audience", "quick call", "quick chat",
+  "game changing", "game changer", "end-to-end", "best-in-class", "following up", "checking in",
   "just bumping this", "thought i'd follow up",
+  // generic hedge filler -- not endorsed by any worked example, still banned
+  "no pitch", "just curious", "just a question", "figured it was worth", "worth a quick note",
 ];
 
 // The exact list from the outreach spec, kept as its own export so prompts can show it verbatim
 // (some entries overlap with the categorized list above -- both exist because the model responds
 // better to an explicit list AND a category test; redundancy here is intentional, not a bug).
 export const PROHIBITED_PHRASES = `
-Hope you're doing well · I came across your profile · Wanted to reach out · Touch base ·
-Circle back · Scale your business · Unlock revenue · Take things to the next level ·
-Leverage your audience · Quick call · Quick chat · Game changing · Synergy · End-to-end ·
-Best-in-class · Hope this finds you well · Following up · Checking in · Just bumping this ·
-Thought I'd follow up
+Hope you're doing well · Hope this finds you well · Wanted to reach out · Touch base ·
+Circle back · Following up · Checking in · Quick call · Quick chat · Scale your business ·
+Unlock revenue · Take it to the next level · Leverage · Synergy · Game changer · End-to-end ·
+Powerful platform · I noticed · I came across · Thought I'd connect · Just bumping this
 `.trim();
 
 // Comparison phrasing that implies "vs. your other content" without necessarily naming a second
@@ -104,13 +107,33 @@ export interface StyleViolation {
   term: string;
 }
 
-/** Deterministic post-generation check -- returns every hard violation found, field by field. */
+const PERMISSION_CLOSE_PATTERN =
+  /\b(worth (it|sending|a look)|interested\?|want (it|them|to see it|the notes|what i (wrote|found|put together))|send (it|them|what i (found|wrote)) over|happy to send)\b/i;
+const TRIPLET_PATTERN = /\b[\w-]+,\s*[\w-]+,?\s+(and|or)\s+[\w-]+\b/i;
+
+/** ~4+ significant (4+ letter) words from a title, used to detect if it's referenced in a message. */
+function titleFingerprint(title: string): string[] {
+  return title
+    .toLowerCase()
+    .split(/\W+/)
+    .filter((w) => w.length >= 4)
+    .slice(0, 4);
+}
+
+/**
+ * Deterministic post-generation check -- returns every hard violation found, field by field.
+ * `titles` is the same recent-video-titles list the writer was given; passing it lets this
+ * catch multi-content-reference violations (two titles quoted in one message), which no banned
+ * phrase list can catch since referencing a second real title isn't itself a banned word.
+ */
 export function scanForViolations(
-  fields: Record<string, string>
+  fields: Record<string, string>,
+  titles: string[] = []
 ): StyleViolation[] {
   const violations: StyleViolation[] = [];
   for (const [field, text] of Object.entries(fields)) {
     if (!text) continue;
+
     for (const term of HARD_BANNED_TERMS) {
       const re = new RegExp(`\\b${term.replace(/\s+/g, "\\s+")}\\b`, "i");
       if (re.test(text)) violations.push({ field, term });
@@ -119,6 +142,51 @@ export function scanForViolations(
       const match = text.match(pattern);
       if (match) violations.push({ field, term: match[0] });
     }
+
+    // Multiple content pieces referenced -- count how many of the given titles have most of
+    // their significant words present in this field.
+    if (titles.length > 1) {
+      const lower = text.toLowerCase();
+      const titlesReferenced = titles.filter((title) => {
+        const fp = titleFingerprint(title);
+        if (fp.length === 0) return false;
+        const hits = fp.filter((w) => lower.includes(w)).length;
+        return hits >= Math.min(2, fp.length);
+      });
+      if (titlesReferenced.length >= 2) {
+        violations.push({
+          field,
+          term: `multiple content pieces referenced (${titlesReferenced.length} titles detected)`,
+        });
+      }
+    }
+
+    // Sentence length -- split on sentence boundaries, flag anything over ~16 words.
+    const sentences = text.split(/(?<=[.!?])\s+/).filter(Boolean);
+    for (const sentence of sentences) {
+      const wordCount = sentence.trim().split(/\s+/).filter(Boolean).length;
+      if (wordCount > 16) {
+        violations.push({ field, term: `run-on sentence (${wordCount} words): "${sentence.trim().slice(0, 60)}..."` });
+      }
+    }
+
+    // Em-dash used as a crutch -- 2+ in one message, or 2+ within a single sentence bracketing
+    // a list, both read as written/formal rather than typed.
+    const emDashCount = (text.match(/—/g) || []).length;
+    if (emDashCount >= 2) {
+      violations.push({ field, term: `em-dash overused (${emDashCount} instances)` });
+    }
+
+    // Triplet / parallel "X, Y, and Z" list.
+    if (TRIPLET_PATTERN.test(text)) {
+      violations.push({ field, term: "triplet list (X, Y, and Z rhythm)" });
+    }
+
+    // Missing permission close -- only meaningful for the longer fields with room for a real
+    // closing question (email/linkedin); x_dm is short enough this can be too strict.
+    if ((field === "email_body" || field === "linkedin_message") && !PERMISSION_CLOSE_PATTERN.test(text)) {
+      violations.push({ field, term: "missing permission-close question (e.g. \"worth sending over?\")" });
+    }
   }
   return violations;
 }
@@ -126,30 +194,34 @@ export function scanForViolations(
 // ---------- Message framework ----------
 
 export const MESSAGE_FRAMEWORK = `
-1. Personal connection (one sentence). Show real familiarity with the ONE piece of content
-   given as evidence -- never fake it, never claim familiarity beyond what's given. Never write
-   "I love your content" or any generic praise.
-2. Reason for writing (one sentence). Not "I wanted to reach out" -- instead something like "As
-   I watched, one thing kept standing out" or "That's what made me want to write."
-3. One observation (one or two sentences). Never a list of things, ONE real reaction to what the
-   content actually said or argued. Never critique everything -- pick the single most specific
-   thing worth saying.
-4. Credibility (optional, ONE sentence, only if it's actually relevant to what was just said --
-   never force it in). If used: "I've worked behind the scenes with Salty Cracker, Jeffrey
-   Prather, Andy Ngo, and True the Vote." Never list credentials that don't matter to this
-   specific message.
-5. Permission close (one sentence, one question). Never ask for a meeting or "30 minutes."
-   Ask permission to send something instead: "Worth sending over?" / "I put together a few
-   thoughts. Interested?" / "Happy to send what I found."
+1. One honest opening (one sentence). Disarm immediately instead of pretending this isn't
+   outreach. E.g. "This is a business email." / "I'll be upfront -- this is a pitch." Never
+   claim a personal relationship that isn't verifiably true (no "my wife and I are fans" unless
+   that were literally known to be true, which it never is here).
+2. Why THIS creator (one sentence). Mention exactly ONE real thing -- one episode, one
+   investigation, one interview -- and then MOVE ON. Do not summarize it, do not explain why it
+   was good, do not prove research happened. "I've been following your recent Iran coverage."
+   Done. Nothing more. Naming a second piece of content, or elaborating on the first, both fail
+   this step.
+3. One business observation (one sentence, at most two). NOT a reaction to video content --
+   an honest observation about the business behind the audience, grounded in the real evidence
+   given below. E.g. "The audience has outgrown the business behind it." / "The website still
+   feels like a companion to YouTube." Never give more than one observation. Never perform a
+   website audit or list several gaps.
+4. Credibility (optional, ONE sentence, only if genuinely relevant -- never force it in). If
+   used: "I've worked behind the scenes with Salty Cracker, Jeffrey Prather, Andy Ngo, and True
+   the Vote." Never list your resume.
+5. Permission (one sentence, one question). Never ask for a meeting, a call, or time on the
+   calendar. Ask permission to send something instead: "I put together a few ideas specifically
+   for you. Worth sending over?" / "I'd be happy to share it."
 `.trim();
 
-// Rotate the THEME, never reuse the literal sentence twice -- and only use themes that are
-// generally true of how Andy operates, not creator-specific claims we can't verify (e.g. never
-// claim "my wife and I already watch you" -- we have no way to know that's true).
-export const WHY_YOU_THEMES = `
-- Andy only works with a handful of creators at a time and would rather build a few real
-  relationships than chase a long list of clients.
-- Andy only reaches out when he genuinely thinks there's something real worth building.
+// Step 1's opener, rotated -- only themes that are always true or always safe to say, never a
+// creator-specific claim we have no way to verify (e.g. never claim personal familiarity with
+// their work that we don't actually have).
+export const HONEST_OPENING_THEMES = `
+- "This is a business email." (plain, disarming, always true)
+- "I'll be upfront -- this is a pitch." (same idea, different phrasing)
 `.trim();
 
 export const QUALITY_SCORE_CATEGORIES = [

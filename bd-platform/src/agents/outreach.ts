@@ -15,6 +15,7 @@
  */
 import {
   getCreator,
+  latestAudit,
   latestOpportunityScore,
   latestProposal,
   latestRelationshipTrigger,
@@ -29,13 +30,28 @@ import {
   SENTENCE_STYLE_RULES,
   INTEGRITY_RULES,
   MESSAGE_FRAMEWORK,
-  WHY_YOU_THEMES,
+  HONEST_OPENING_THEMES,
   QUALITY_SCORE_CATEGORIES,
   scanForViolations,
   type StyleViolation,
 } from "../lib/writingStyle.js";
+import type { Angle } from "./relationshipIntelligence.js";
+import type { AuditAgent } from "../types.js";
 
 const REAL_CLIENTS = "Salty Cracker, Jeffrey Prather, Andy Ngo, and True the Vote";
+
+// Which audit backs the "one business observation" for each angle -- grounds that sentence in
+// a real finding instead of asking the model to invent a business observation from nothing.
+const ANGLE_TO_AUDIT_AGENT: Record<Angle, AuditAgent> = {
+  "Audience Ownership": "ownership",
+  Membership: "ownership",
+  Merch: "merch",
+  Community: "community",
+  Website: "website",
+  AI: "ai_opportunity",
+  Sponsors: "monetization",
+  TopFan: "topfan",
+};
 
 type OutreachFields = {
   email_subject: string;
@@ -62,10 +78,11 @@ export async function runOutreachWriter(creatorId: number): Promise<OutreachOutc
   const proposal = await latestProposal(creatorId);
   const trigger = await latestRelationshipTrigger(creatorId);
 
-  const angle = trigger?.angle ?? "Audience Ownership";
+  const angle = (trigger?.angle as Angle) ?? "Audience Ownership";
+  const groundingAudit = await latestAudit(creatorId, ANGLE_TO_AUDIT_AGENT[angle]);
   const whyNowBlock = trigger?.trigger_found
-    ? `TRIGGER FOUND -- use this as the reason for writing: ${trigger.trigger_label}. Evidence: ${trigger.evidence}`
-    : "No external trigger found. Lead with the personal connection and observation instead -- that is a legitimate, honest reason to write on its own, don't force a trigger that isn't there.";
+    ? `TRIGGER FOUND -- use this as "why this creator": ${trigger.trigger_label}. Evidence: ${trigger.evidence}`
+    : "No external trigger found. Mentioning the one piece of content is reason enough on its own -- don't force a trigger that isn't there.";
 
   const payload = await structuredCall<{
     email_subject: string;
@@ -75,23 +92,35 @@ export async function runOutreachWriter(creatorId: number): Promise<OutreachOutc
     specific_references: string[];
   }>({
     system: `
-You are Andy, a thoughtful business owner writing one creator he genuinely respects. Not an SDR,
-not a copywriter, not an AI. The recipient should never feel like they're in a marketing sequence.
+REGISTER -- calibrate everything to this: this is the email Andy would write if he'd been
+introduced to this creator by a mutual friend. Not cold, not stiff, not over-explaining who he
+is. Warm, direct, credible by implication rather than by resume. The recipient should finish
+reading and think "this sounds like one person writing another person," never "this AI scraped
+my channel."
+
+This exists to start a conversation, not to sell, explain services, or book a meeting. Success
+is a genuine reply -- nothing else matters, not opens, not clicks.
 
 WHY THIS CREATOR, WHY NOW:
 ${whyNowBlock}
 Single angle for this message -- ${angle}. Never mix in a second angle or list multiple services.
 
+BUSINESS OBSERVATION EVIDENCE (ground step 3 of the framework in this real finding, don't invent
+your own): ${groundingAudit ? groundingAudit.summary : "No audit evidence available -- keep the observation general and honest about that."}
+
 MESSAGE FRAMEWORK -- follow this structure exactly, one sentence per step unless noted:
 ${MESSAGE_FRAMEWORK}
 
-"WHY YOU" -- if a reason for writing personally would strengthen the message, draw on one of
-these themes (rephrase fresh, never reuse literal wording, never claim something unverifiable):
-${WHY_YOU_THEMES}
+STEP 1 OPTIONS (rephrase fresh, don't reuse literal wording):
+${HONEST_OPENING_THEMES}
 
 CREDIBILITY LINE -- only if it's genuinely relevant to what you just said, at most once: "I've
-worked behind the scenes with ${REAL_CLIENTS}." Never force this in. Never list credentials that
-don't matter to this specific message.
+worked behind the scenes with ${REAL_CLIENTS}." Never force this in. Never list your resume.
+
+NEVER DO THIS: never summarize their content, never list multiple videos/pieces, never prove you
+researched them, never compliment everything, never flatter. Mention ONE thing and move on --
+"I've been following your recent Iran coverage." Done. Nothing more. If a sentence explains WHY
+something was good, or names a second title, it has already failed this rule.
 
 HONESTY RULES -- these override everything else, including how natural or engaging a sentence
 sounds:
@@ -102,30 +131,31 @@ ${PROHIBITED_PHRASES}
 
 ${SENTENCE_STYLE_RULES}
 
-PERMISSION CLOSE -- never ask for a meeting or "30 minutes." Ask permission to send something:
-"Worth sending over?" / "I put together a few thoughts. Interested?" / "Happy to send what I
-found." Exactly one question, nothing after it.
+PERMISSION -- never ask for a meeting, a call, or time on the calendar, never mention Calendly.
+Ask permission to send something instead: "I put together a few ideas specifically for you.
+Worth sending over?" / "I'd be happy to share it." Exactly one question, nothing after it.
 
-TONE: personal, specific, curious, respectful, confident, helpful. Never pushy, salesy,
-corporate, manipulative, overly enthusiastic, or generic. Understated humor is fine if it fits
-naturally (e.g. "full disclosure -- this is a pitch") -- never force a joke, never use memes,
-slang, or sarcasm.
+TONE: calm, observant, confident, understated, human. No hype, no enthusiasm theater, no
+corporate language. Understated humor is fine if it fits naturally -- never force a joke, never
+use memes, slang, or sarcasm.
 
-FINAL TEST before you finalize: would Andy actually send this to someone he admires? Would a
-real person reply to it? Could this have been written for anyone, or only for this creator based
-on this evidence? If it could be sent to anyone, it's not specific enough -- rewrite it.
+MAXIMUM LENGTH: email 120 words, LinkedIn 75 words, X DM 55 words. If longer, cut it down.
+
+FINAL TEST before you finalize: would a real founder actually send this? Or does it sound like
+AI trying to sound human? Could this have been written for anyone, or only for this creator based
+on this evidence? If either test fails, rewrite it.
 `.trim(),
     prompt: `
 Creator: ${creator.name}
 Website: ${creator.website ?? "(none on file)"}
 ${site && !site.error ? `Site title: "${site.title}"\nSite text sample: """${site.bodyTextSample.slice(0, 1500)}"""` : "Website evidence unavailable."}
-Recent video titles (pick exactly ONE for the personal connection/observation, ignore the rest -- do not compare or reference more than one): ${recentVideoTitles.length ? recentVideoTitles.join(" | ") : "(none available)"}
+Recent video titles (pick exactly ONE to mention in step 2, ignore the rest -- do not compare, list, or reference more than one): ${recentVideoTitles.length ? recentVideoTitles.join(" | ") : "(none available)"}
 Opportunity score: ${score ? `${score.overall_score}/100 (${score.priority} priority)` : "not yet scored"}
-Proposal prepared: ${proposal ? "yes (do not mention it directly -- the permission close is about sending over thoughts/notes, not a proposal)" : "not yet generated"}
+Proposal prepared: ${proposal ? "yes (do not mention it directly -- the permission close is about sending over ideas, not a proposal)" : "not yet generated"}
 
-Write EMAIL_1 (first contact, under 125 words including greeting/sign-off), the LinkedIn DM
-(under 75 words), and the X DM (under 60 words), all following the message framework and the
-same angle. List the specific references you used.
+Write EMAIL_1 (first contact, max 120 words including greeting/sign-off), the LinkedIn DM (max
+75 words), and the X DM (max 55 words), all following the message framework and the same angle.
+List the specific references you used.
 `.trim(),
     schema: OUTREACH_SCHEMA,
     toolName: "emit_outreach",
@@ -192,14 +222,14 @@ Return the edited version of all four fields.
 
   // Deterministic backstop: literal banned-term scan, up to 2 targeted correction passes.
   for (let attempt = 0; attempt < 2; attempt++) {
-    const violations = scanForViolations(current);
+    const violations = scanForViolations(current, recentVideoTitles);
     if (violations.length === 0) break;
     log.push(
       `correction pass ${attempt + 1}: found ${violations.map((v) => `"${v.term}" in ${v.field}`).join(", ")}`
     );
     current = await runCorrectionPass(current, violations);
   }
-  const finalViolations = scanForViolations(current);
+  const finalViolations = scanForViolations(current, recentVideoTitles);
   if (finalViolations.length > 0) {
     log.push(
       `UNRESOLVED after correction passes: ${finalViolations.map((v) => `"${v.term}" in ${v.field}`).join(", ")}`
@@ -226,7 +256,7 @@ Return the edited version of all four fields.
   if (weak.length > 0) {
     log.push(`quality gate: ${weak.map((cat) => `${cat}=${scores[cat].score} (${scores[cat].reason})`).join(", ")}`);
     current = await runQualityRewrite(current, weak, scores);
-    const rescan = scanForViolations(current);
+    const rescan = scanForViolations(current, recentVideoTitles);
     if (rescan.length > 0) {
       log.push(`post-quality-rewrite violations: ${rescan.map((v) => `"${v.term}" in ${v.field}`).join(", ")}`);
       current = await runCorrectionPass(current, rescan);
@@ -263,10 +293,22 @@ async function runCorrectionPass(
   const violationList = violations.map((v) => `- "${v.term}" appears in ${v.field}`).join("\n");
   return structuredCall<OutreachFields>({
     system: `
-You are a strict corrector. You will be given a message and an exact list of banned terms found
-in it verbatim. Rewrite ONLY the sentence(s) containing each banned term so that term (and close
-synonyms in the same category) no longer appears anywhere in the output. Keep every other
-sentence exactly as it is. Do not reintroduce any of these terms.
+You are a strict corrector fixing an exact, machine-detected list of violations. Two kinds:
+
+1. Banned terms/phrases (shown as "term" in quotes) -- rewrite ONLY the sentence(s) containing
+   each one so it (and close synonyms in the same category) no longer appears anywhere.
+2. Structural violations (shown as a description, not a quoted term):
+   - "run-on sentence (N words)" -- split that sentence into two or more shorter ones, ~15
+     words each, one idea per sentence.
+   - "em-dash overused" -- remove extra em-dashes; rephrase as separate sentences instead.
+   - "triplet list" -- break the X, Y, and Z list into a single item, or two short sentences.
+   - "multiple content pieces referenced" -- pick the SINGLE strongest piece of content and
+     remove every mention of any other one. This may require rewriting most of the message.
+   - "missing permission-close question" -- ADD one short closing question at the very end,
+     e.g. "Worth sending over?" / "Want to see it?" -- do not add anything after it.
+
+Fix every violation listed. Keep everything else in the message as close to the original as
+possible -- don't rewrite parts that aren't flagged.
 `.trim(),
     prompt: `
 DRAFT:
@@ -275,7 +317,7 @@ Email: ${current.email_body}
 LinkedIn: ${current.linkedin_message}
 X DM: ${current.x_dm}
 
-BANNED TERMS FOUND (must not appear anywhere in your output):
+VIOLATIONS FOUND (fix every one):
 ${violationList}
 
 Return corrected versions of all four fields.
