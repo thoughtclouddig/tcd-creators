@@ -1,34 +1,41 @@
 /**
- * Agent 14 — Follow Up
+ * Agent 14 — Follow Up (EMAIL_3, EMAIL_4, EMAIL_5 in the outreach spec)
  *
  * Generates the 7/21/60-day follow-up drafts up front (at outreach time) so they're ready
- * for review on schedule rather than written reactively. Each is a fresh Claude call with
- * a different angle so the three never read as the same email restated.
+ * for review on schedule rather than written reactively. Each is a fresh Claude call with a
+ * different approach so the three never read as the same email restated:
+ *   EMAIL_3 (day 7)  -- light check-in, no new content
+ *   EMAIL_4 (day 21) -- adds value: one more genuine, specific observation
+ *   EMAIL_5 (day 60) -- graceful exit, easy out, door left open
+ *
+ * (EMAIL_2 -- the reply sent after a creator responds positively -- isn't generated here since
+ * it needs to react to what they actually said; that's a manual "generate reply" action once
+ * inbound replies are tracked, not something to pre-write blind.)
  */
-import { getCreator, latestOpportunityScore, saveFollowUp } from "../db/repo.js";
+import { getCreator, latestOpportunityScore, latestRelationshipTrigger, saveFollowUp } from "../db/repo.js";
 import { textCall } from "../lib/claude.js";
 import {
-  BANNED_JARGON_CATEGORIES,
+  PROHIBITED_PHRASES,
   SENTENCE_STYLE_RULES,
   INTEGRITY_RULES,
   scanForViolations,
 } from "../lib/writingStyle.js";
 
-const STAGES: { dayOffset: 7 | 21 | 60; angle: string }[] = [
+const STAGES: { dayOffset: 7 | 21 | 60; approach: string }[] = [
   {
     dayOffset: 7,
-    angle:
-      "Light, brief check-in. Assume they're busy, not uninterested. Reference the original outreach without repeating it. One or two sentences.",
+    approach:
+      "Light, brief check-in. Assume they're busy, not uninterested. Reference the original outreach without repeating it. One or two sentences. No new observation needed.",
   },
   {
     dayOffset: 21,
-    angle:
-      "Mention one more genuine, specific reaction to something they made -- an opinion or question about the substance, never a strategic observation about their content or audience. Three sentences max.",
+    approach:
+      "Add value: one more genuine, specific reaction to something they made -- an opinion or question about the substance, never a strategic observation about their content or audience. Three sentences max.",
   },
   {
     dayOffset: 60,
-    angle:
-      "Final, low-pressure note. Explicitly give them an easy out ('no worries if the timing isn't right'). Leave the door open without chasing.",
+    approach:
+      "Graceful exit. Explicitly give them an easy out ('no worries if the timing isn't right'). Leave the door open without chasing. Low pressure, final note.",
   },
 ];
 
@@ -45,32 +52,32 @@ export async function runFollowUpScheduler(
   const creator = await getCreator(creatorId);
   if (!creator) throw new Error(`Creator ${creatorId} not found`);
   const score = await latestOpportunityScore(creatorId);
+  const trigger = await latestRelationshipTrigger(creatorId);
 
   const outcomes: FollowUpOutcome[] = [];
 
   for (const stage of STAGES) {
     const body = await textCall({
       system: `
-You are Andy, sending a short follow-up. It must not read as AI-written or as marketing copy --
-if a skeptical reader could tell an AI wrote it, you have failed. No "just following up", no "I
-wanted to circle back", no throat-clearing openers, no vague temporal scene-setters ("Been
-following your recent run", "Circling back on your recent episode"). Open directly on the actual
-point, never on a sentence about having been aware of them in general.
+You are Andy, a thoughtful business owner sending a short follow-up -- not an SDR, not a
+copywriter, not an AI. The recipient should never feel like they're in a marketing sequence.
 
 HONESTY RULES -- these matter more than style, check them first:
 ${INTEGRITY_RULES}
 
-BANNED WORDS AND PHRASES, BY CATEGORY:
-${BANNED_JARGON_CATEGORIES}
+PROHIBITED PHRASES -- never write any of these or close variants:
+${PROHIBITED_PHRASES}
 
 ${SENTENCE_STYLE_RULES}
 
-The original outreach offered to send over notes Andy wrote about one specific episode -- keep
-that same pretext. End with exactly one low-key question about sending those notes over -- nothing
-after it, no "let me know if you have questions."
+The original outreach offered to send over thoughts/notes Andy wrote about one specific piece of
+content${trigger?.trigger_found ? ` (and mentioned: ${trigger.trigger_label})` : ""} -- keep that
+same pretext and the same single angle (${trigger?.angle ?? "the same topic as the original"}).
+End with exactly one low-key permission-close question ("worth sending over?" / "still interested?")
+-- never ask for a meeting or call, nothing after the question.
 
-Before finalizing, check every sentence against the honesty rules first, then the banned list and
-the 15-word limit. Rewrite anything that violates any of them.
+Before finalizing, check every sentence against the honesty rules first, then the prohibited
+phrases and the 15-word sentence limit. Rewrite anything that violates any of them.
 `.trim(),
       prompt: `
 Creator: ${creator.name}
@@ -80,7 +87,7 @@ Original outreach email:
 ${originalEmailBody}
 """
 
-Write the day-${stage.dayOffset} follow-up. Angle: ${stage.angle}
+Write the day-${stage.dayOffset} follow-up. Approach: ${stage.approach}
 Return only the message body, no subject line.
 `.trim(),
       maxTokens: 300,

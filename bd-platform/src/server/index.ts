@@ -12,6 +12,7 @@ import {
   getCrm,
   latestOpportunityScore,
   latestProposal,
+  latestRelationshipTrigger,
   latestSnapshot,
   listCreators,
   listFollowUps,
@@ -487,7 +488,7 @@ app.get(
       return;
     }
 
-    const [score, snapshot, proposal, crm, rawAudits, outreach, followUps] = await Promise.all([
+    const [score, snapshot, proposal, crm, rawAudits, outreach, followUps, trigger] = await Promise.all([
       latestOpportunityScore(id),
       latestSnapshot(id),
       latestProposal(id),
@@ -495,6 +496,7 @@ app.get(
       allLatestAudits(id),
       listOutreach(id),
       listFollowUps(id),
+      latestRelationshipTrigger(id),
     ]);
 
     const audits = rawAudits.map((a) => ({
@@ -515,6 +517,7 @@ app.get(
       audits,
       outreach,
       followUps,
+      trigger,
       auditQueued: req.query.auditQueued === "1",
     });
   })

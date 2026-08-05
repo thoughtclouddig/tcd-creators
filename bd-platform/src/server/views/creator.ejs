@@ -62,6 +62,36 @@
   </div>
   <% } %>
 
+  <% if (trigger) { %>
+  <div class="section" style="margin-top:0">
+    <div class="section-head"><h2>Why We're Reaching Out</h2></div>
+    <div class="card">
+      <div class="grid grid-2" style="margin-bottom:<%= trigger.trigger_found ? '18px' : '0' %>">
+        <div>
+          <span class="kicker">Trigger</span>
+          <p style="margin-top:8px;color:var(--ink-soft)">
+            <% if (trigger.trigger_found) { %>
+              <strong style="color:var(--ink)"><%= trigger.trigger_label %></strong>
+            <% } else { %>
+              None found — leading with a genuine reaction instead, which is a legitimate reason on its own.
+            <% } %>
+          </p>
+        </div>
+        <div>
+          <span class="kicker">Angle</span>
+          <p style="margin-top:8px;color:var(--ink-soft)"><strong style="color:var(--ink)"><%= trigger.angle %></strong></p>
+        </div>
+      </div>
+      <% if (trigger.trigger_found && trigger.evidence) { %>
+        <span class="kicker">Evidence</span>
+        <p style="margin-top:8px;margin-bottom:18px;color:var(--ink-soft);font-style:italic">"<%= trigger.evidence %>"</p>
+      <% } %>
+      <span class="kicker">Why Now</span>
+      <p style="margin-top:8px;color:var(--ink-soft)"><%= trigger.why_now %></p>
+    </div>
+  </div>
+  <% } %>
+
   <% if (snapshot) { %>
   <div class="section" style="margin-top:0">
     <div class="section-head"><h2>Audience Intelligence</h2></div>

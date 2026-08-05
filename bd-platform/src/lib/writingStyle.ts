@@ -67,7 +67,24 @@ const HARD_BANNED_TERMS = [
   "plan", "pattern", "strategy", "flag", "flagging", "lane", "contrast", "retention", "angle",
   "leverage", "unlock", "elevate", "synergy", "ecosystem", "outperform", "outperforming",
   "trend", "trending", "insight", "signal", "data point", "key takeaway", "double down",
+  // exact PROHIBITED_PHRASES from the outreach spec -- checked verbatim, not just described
+  "hope you're doing well", "hope this finds you well", "i came across your profile",
+  "wanted to reach out", "touch base", "circle back", "scale your business", "unlock revenue",
+  "take things to the next level", "leverage your audience", "quick call", "quick chat",
+  "game changing", "end-to-end", "best-in-class", "following up", "checking in",
+  "just bumping this", "thought i'd follow up",
 ];
+
+// The exact list from the outreach spec, kept as its own export so prompts can show it verbatim
+// (some entries overlap with the categorized list above -- both exist because the model responds
+// better to an explicit list AND a category test; redundancy here is intentional, not a bug).
+export const PROHIBITED_PHRASES = `
+Hope you're doing well · I came across your profile · Wanted to reach out · Touch base ·
+Circle back · Scale your business · Unlock revenue · Take things to the next level ·
+Leverage your audience · Quick call · Quick chat · Game changing · Synergy · End-to-end ·
+Best-in-class · Hope this finds you well · Following up · Checking in · Just bumping this ·
+Thought I'd follow up
+`.trim();
 
 // Comparison phrasing that implies "vs. your other content" without necessarily naming a second
 // title -- "most of your street stuff doesn't" never says a second video's name but is still a
@@ -105,3 +122,42 @@ export function scanForViolations(
   }
   return violations;
 }
+
+// ---------- Message framework ----------
+
+export const MESSAGE_FRAMEWORK = `
+1. Personal connection (one sentence). Show real familiarity with the ONE piece of content
+   given as evidence -- never fake it, never claim familiarity beyond what's given. Never write
+   "I love your content" or any generic praise.
+2. Reason for writing (one sentence). Not "I wanted to reach out" -- instead something like "As
+   I watched, one thing kept standing out" or "That's what made me want to write."
+3. One observation (one or two sentences). Never a list of things, ONE real reaction to what the
+   content actually said or argued. Never critique everything -- pick the single most specific
+   thing worth saying.
+4. Credibility (optional, ONE sentence, only if it's actually relevant to what was just said --
+   never force it in). If used: "I've worked behind the scenes with Salty Cracker, Jeffrey
+   Prather, Andy Ngo, and True the Vote." Never list credentials that don't matter to this
+   specific message.
+5. Permission close (one sentence, one question). Never ask for a meeting or "30 minutes."
+   Ask permission to send something instead: "Worth sending over?" / "I put together a few
+   thoughts. Interested?" / "Happy to send what I found."
+`.trim();
+
+// Rotate the THEME, never reuse the literal sentence twice -- and only use themes that are
+// generally true of how Andy operates, not creator-specific claims we can't verify (e.g. never
+// claim "my wife and I already watch you" -- we have no way to know that's true).
+export const WHY_YOU_THEMES = `
+- Andy only works with a handful of creators at a time and would rather build a few real
+  relationships than chase a long list of clients.
+- Andy only reaches out when he genuinely thinks there's something real worth building.
+`.trim();
+
+export const QUALITY_SCORE_CATEGORIES = [
+  "personalization",
+  "specificity",
+  "authenticity",
+  "curiosity",
+  "respect",
+  "sales_pressure", // inverted: 10 = zero pressure, 1 = hard sell
+  "human_voice",
+] as const;

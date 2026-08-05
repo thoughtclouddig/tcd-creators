@@ -159,3 +159,38 @@ export const OUTREACH_EDIT_SCHEMA = {
   },
   required: ["email_subject", "email_body", "linkedin_message", "x_dm", "changes_made"],
 } as const;
+
+function scoreField(label: string) {
+  return {
+    type: "object",
+    properties: {
+      score: { type: "number", description: `1-10. ${label}` },
+      reason: { type: "string", description: "One short phrase, only needed if score < 9." },
+    },
+    required: ["score", "reason"],
+  };
+}
+
+// Self-scoring gate applied per-field (email/linkedin/x_dm each scored separately -- a subject
+// line or a 20-word DM can't fairly be judged on the same rubric as a full email).
+export const QUALITY_SCORE_SCHEMA = {
+  type: "object",
+  properties: {
+    personalization: scoreField("Does this reference something real and specific to this creator?"),
+    specificity: scoreField("Concrete detail, not vague gesturing at 'your content'?"),
+    authenticity: scoreField("Would a real person actually write this, unprompted?"),
+    curiosity: scoreField("Does it make the reader want to know more, without over-explaining?"),
+    respect: scoreField("Does it respect the reader's time and intelligence -- no pressure, no hype?"),
+    sales_pressure: scoreField("INVERTED: 10 = zero sales pressure, 1 = hard sell. Score high is good here."),
+    human_voice: scoreField("Would this pass as human-written to a skeptical reader?"),
+  },
+  required: [
+    "personalization",
+    "specificity",
+    "authenticity",
+    "curiosity",
+    "respect",
+    "sales_pressure",
+    "human_voice",
+  ],
+} as const;

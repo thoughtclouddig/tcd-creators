@@ -23,6 +23,7 @@ import { runAiOpportunityAudit } from "../agents/aiOpportunity.js";
 import { runTopFanAudit } from "../agents/topfan.js";
 import { runOpportunityScoring } from "../agents/scoring.js";
 import { runProposalGenerator } from "../agents/proposal.js";
+import { runRelationshipIntelligence } from "../agents/relationshipIntelligence.js";
 import { runOutreachWriter } from "../agents/outreach.js";
 import { runCrmInit } from "../agents/crm.js";
 import { runFollowUpScheduler } from "../agents/followUp.js";
@@ -81,6 +82,8 @@ export async function runFullAuditPipeline(creatorId: number): Promise<PipelineR
     const outcome = await runProposalGenerator(creatorId);
     proposalPath = outcome.htmlPath;
   });
+
+  await step("Agent 11.5 — Relationship Intelligence", () => runRelationshipIntelligence(creatorId));
 
   let outreachEmailBody: string | undefined;
   await step("Agent 12 — Outreach Writer", async () => {

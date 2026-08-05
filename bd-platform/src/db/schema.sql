@@ -136,10 +136,27 @@ CREATE TABLE IF NOT EXISTS discovery_sweeps (
   warnings_json             TEXT DEFAULT '[]'
 );
 
+-- Agent 11.5 -- Relationship Intelligence. The "why this creator, why now, why us" answer,
+-- computed BEFORE outreach is written, from real evidence only (subscriber growth between
+-- recorded snapshots, announcement-like language actually present in a real title/site text).
+-- trigger_found=false is a normal, expected outcome, not a failure -- most creators won't have
+-- a detectable trigger on any given day, and the system should say so rather than invent one.
+CREATE TABLE IF NOT EXISTS relationship_triggers (
+  id                SERIAL PRIMARY KEY,
+  creator_id         INTEGER NOT NULL REFERENCES creators(id) ON DELETE CASCADE,
+  created_at          TIMESTAMPTZ DEFAULT now(),
+  trigger_found        BOOLEAN NOT NULL DEFAULT false,
+  trigger_label         TEXT,     -- e.g. "Rapid subscriber growth", "New merch launch"
+  evidence                TEXT,   -- the literal fact backing the trigger (a number, a title, a line of site text)
+  angle                    TEXT NOT NULL,  -- one of the fixed ANGLE list, chosen deterministically from score gaps
+  why_now                   TEXT   -- one sentence tying trigger + angle together for the writer to use
+);
+
 CREATE INDEX IF NOT EXISTS idx_audits_creator ON audits(creator_id, agent);
 CREATE INDEX IF NOT EXISTS idx_snapshots_creator ON audience_snapshots(creator_id, captured_at);
 CREATE INDEX IF NOT EXISTS idx_outreach_creator ON outreach(creator_id);
 CREATE INDEX IF NOT EXISTS idx_followups_creator ON follow_ups(creator_id, scheduled_date);
+CREATE INDEX IF NOT EXISTS idx_triggers_creator ON relationship_triggers(creator_id);
 
 -- ---------- Migrations ----------
 -- ensureSchema() re-runs this whole file on every boot (every statement above is

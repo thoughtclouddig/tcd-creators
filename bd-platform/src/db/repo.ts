@@ -485,3 +485,36 @@ export async function recentDiscoverySweeps(limit = 10): Promise<any[]> {
 export async function clearDiscoverySweepHistory(): Promise<void> {
   await query(`DELETE FROM discovery_sweeps`);
 }
+
+// ---------- Relationship triggers ----------
+
+export async function saveRelationshipTrigger(
+  creatorId: number,
+  fields: {
+    triggerFound: boolean;
+    triggerLabel?: string;
+    evidence?: string;
+    angle: string;
+    whyNow?: string;
+  }
+): Promise<void> {
+  await query(
+    `INSERT INTO relationship_triggers (creator_id, trigger_found, trigger_label, evidence, angle, why_now)
+     VALUES ($1,$2,$3,$4,$5,$6)`,
+    [
+      creatorId,
+      fields.triggerFound,
+      fields.triggerLabel ?? null,
+      fields.evidence ?? null,
+      fields.angle,
+      fields.whyNow ?? null,
+    ]
+  );
+}
+
+export async function latestRelationshipTrigger(creatorId: number): Promise<any> {
+  return one(
+    `SELECT * FROM relationship_triggers WHERE creator_id = $1 ORDER BY created_at DESC LIMIT 1`,
+    [creatorId]
+  );
+}
