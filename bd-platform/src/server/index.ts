@@ -10,6 +10,9 @@ import {
   finishDiscoverySweep,
   getCreator,
   getCrm,
+  getFollowUpById,
+  getOutreachById,
+  latestGmailToken,
   latestOpportunityScore,
   latestProposal,
   latestRelationshipTrigger,
@@ -19,6 +22,8 @@ import {
   listOutreach,
   listPipeline,
   listUnauditedCreators,
+  markFollowUpSent,
+  markOutreachSent,
   recentDiscoverySweeps,
   recentPipelineRuns,
   setBusinessEmail,
@@ -32,6 +37,7 @@ import { runProposalGenerator } from "../agents/proposal.js";
 import { runOutreachWriter } from "../agents/outreach.js";
 import { runFollowUpScheduler } from "../agents/followUp.js";
 import { CRM_STATUS_LABELS, CRM_STATUSES, STAGE_CLOSE_PROBABILITY } from "../lib/crmStages.js";
+import { getAuthUrl, handleOAuthCallback, isGoogleConfigured, sendEmail } from "../lib/gmail.js";
 import type { AuditAgent, CreatorSeed } from "../types.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -106,6 +112,24 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 app.use(express.static(path.join(__dirname, "public")));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+
+// Gmail connection status on every page, without threading it through each res.render() call —
+// res.locals is merged into the view automatically, same pattern as the app.locals helpers below.
+app.use(async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const token = await latestGmailToken();
+    res.locals.gmailConnected = !!token?.refresh_token;
+    res.locals.gmailEmail = token?.email ?? null;
+  } catch {
+    res.locals.gmailConnected = false;
+    res.locals.gmailEmail = null;
+  }
+  next();
+});
+
+function redirectUriFor(req: Request): string {
+  return process.env.GOOGLE_REDIRECT_URI || `${req.protocol}://${req.get("host")}/auth/google/callback`;
+}
 
 // Async route handlers reject on error rather than throwing synchronously — Express 4 won't
 // route that to error middleware on its own, so every async handler is wrapped to forward it.
@@ -217,6 +241,34 @@ app.get(
       topOpportunities,
       unaudited,
     });
+  })
+);
+
+// ---------- Gmail connect ----------
+
+app.get(
+  "/auth/google",
+  ah(async (req, res) => {
+    if (!isGoogleConfigured()) {
+      res
+        .status(500)
+        .send("Gmail isn't configured — set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET first.");
+      return;
+    }
+    res.redirect(getAuthUrl(redirectUriFor(req)));
+  })
+);
+
+app.get(
+  "/auth/google/callback",
+  ah(async (req, res) => {
+    const code = req.query.code as string | undefined;
+    if (!code) {
+      res.status(400).send("Missing authorization code.");
+      return;
+    }
+    await handleOAuthCallback(code, redirectUriFor(req));
+    res.redirect("/");
   })
 );
 
@@ -420,6 +472,82 @@ app.post(
     // Synchronous -- 1 outreach call + 3 follow-up calls, a few seconds, not the full pipeline.
     const outcome = await runOutreachWriter(id);
     await runFollowUpScheduler(id, outcome.emailBody);
+    res.redirect(`/creators/${id}`);
+  })
+);
+
+// A send only ever fires from an explicit click on a specific already-generated draft — never
+// from a schedule or an agent decision. bumpCrmOnSend only advances the CRM stage forward from
+// "new"/"drafts_ready"; it never overwrites a stage a human has already progressed further
+// (replied, meeting_booked, ...), since a send here doesn't mean anything changed for a creator
+// who's already mid-conversation.
+const PRE_CONTACT_STATUSES = ["new", "drafts_ready"];
+async function bumpCrmOnSend(creatorId: number) {
+  const crm = await getCrm(creatorId);
+  const fields: Partial<{ status: string; emails_sent: number; close_probability_pct: number }> = {
+    emails_sent: (crm?.emails_sent ?? 0) + 1,
+  };
+  if (!crm || PRE_CONTACT_STATUSES.includes(crm.status)) {
+    fields.status = "contacted";
+    fields.close_probability_pct = STAGE_CLOSE_PROBABILITY.contacted;
+  }
+  await updateCrm(creatorId, fields);
+}
+
+app.post(
+  "/creators/:id/outreach/:outreachId/send",
+  ah(async (req, res) => {
+    const id = Number(req.params.id);
+    const outreachId = Number(req.params.outreachId);
+    const creator = await getCreator(id);
+    const draft = await getOutreachById(outreachId);
+    if (!creator || !draft || draft.creator_id !== id) {
+      res.status(404).send("Draft not found");
+      return;
+    }
+    if (draft.channel !== "email") {
+      res.status(400).send("Only the email draft can be sent from here — LinkedIn and X are copy-only.");
+      return;
+    }
+    if (!creator.business_email) {
+      res.status(400).send("Add a business email for this creator before sending.");
+      return;
+    }
+    await sendEmail({
+      to: creator.business_email,
+      subject: draft.subject || creator.name,
+      body: draft.body,
+      fromName: "Andy",
+    });
+    await markOutreachSent(outreachId);
+    await bumpCrmOnSend(id);
+    res.redirect(`/creators/${id}`);
+  })
+);
+
+app.post(
+  "/creators/:id/followups/:followUpId/send",
+  ah(async (req, res) => {
+    const id = Number(req.params.id);
+    const followUpId = Number(req.params.followUpId);
+    const creator = await getCreator(id);
+    const followUp = await getFollowUpById(followUpId);
+    if (!creator || !followUp || followUp.creator_id !== id) {
+      res.status(404).send("Follow-up not found");
+      return;
+    }
+    if (!creator.business_email) {
+      res.status(400).send("Add a business email for this creator before sending.");
+      return;
+    }
+    await sendEmail({
+      to: creator.business_email,
+      subject: `Following up`,
+      body: followUp.body,
+      fromName: "Andy",
+    });
+    await markFollowUpSent(followUpId);
+    await bumpCrmOnSend(id);
     res.redirect(`/creators/${id}`);
   })
 );

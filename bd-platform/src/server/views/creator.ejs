@@ -127,18 +127,34 @@
   <div class="section">
     <div class="section-head">
       <h2>Outreach Drafts</h2>
-      <span class="badge badge-warn">Not sent — draft only</span>
       <form method="POST" action="/creators/<%= creator.id %>/regenerate-outreach">
         <button class="see-all" type="submit" style="background:none;border:none;cursor:pointer">Regenerate →</button>
       </form>
     </div>
-    <p style="color:var(--ink-faint);font-size:.85rem;margin-bottom:20px;margin-top:-10px">Text only. Nothing here is connected to email, X, or LinkedIn — copy and send manually if you want to use it.</p>
+    <p style="color:var(--ink-faint);font-size:.85rem;margin-bottom:20px;margin-top:-10px">LinkedIn and X are text only — copy and send those manually. The email can be sent directly below once a business email is on file and Gmail is connected.</p>
     <div class="card">
       <% outreach.forEach(function(o) { %>
       <div class="outreach-block">
-        <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
           <span class="chan"><%= o.channel %></span>
-          <button class="copy-btn see-all" type="button" data-target="copy-<%= o.id %>" style="background:none;border:none;cursor:pointer">Copy →</button>
+          <div style="display:flex;gap:12px;align-items:center">
+            <% if (o.status === 'sent') { %>
+              <span class="badge badge-status">Sent <%= fmtDate(o.sent_at) %></span>
+            <% } else if (o.channel === 'email') { %>
+              <% if (!creator.business_email) { %>
+                <span class="muted" style="font-size:.78rem">Add a business email to send</span>
+              <% } else if (!gmailConnected) { %>
+                <a href="/auth/google" class="see-all">Connect Gmail to send →</a>
+              <% } else { %>
+                <form method="POST" action="/creators/<%= creator.id %>/outreach/<%= o.id %>/send" onsubmit="return confirm('Send this email to <%= creator.business_email %> right now? This cannot be undone.')" style="display:inline">
+                  <button class="btn" type="submit" style="padding:6px 16px;font-size:.8rem">Send →</button>
+                </form>
+              <% } %>
+            <% } else { %>
+              <span class="badge badge-warn">Not sent — draft only</span>
+            <% } %>
+            <button class="copy-btn see-all" type="button" data-target="copy-<%= o.id %>" style="background:none;border:none;cursor:pointer">Copy →</button>
+          </div>
         </div>
         <% if (o.subject) { %><div class="subject"><%= o.subject %></div><% } %>
         <div class="body"><%= o.body %></div>
@@ -168,7 +184,20 @@
       <div class="outreach-block">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
           <span class="chan">Day <%= f.day_offset %> · <%= fmtDateOnly(f.scheduled_date) %> · <span class="badge badge-status"><%= f.status === 'scheduled' ? 'drafted' : f.status %></span></span>
-          <button class="copy-btn see-all" type="button" data-target="copy-fu-<%= f.id %>" style="background:none;border:none;cursor:pointer">Copy →</button>
+          <div style="display:flex;gap:12px;align-items:center">
+            <% if (f.status === 'sent') { %>
+              <span class="badge badge-status">Sent <%= fmtDate(f.sent_at) %></span>
+            <% } else if (!creator.business_email) { %>
+              <span class="muted" style="font-size:.78rem">Add a business email to send</span>
+            <% } else if (!gmailConnected) { %>
+              <a href="/auth/google" class="see-all">Connect Gmail to send →</a>
+            <% } else { %>
+              <form method="POST" action="/creators/<%= creator.id %>/followups/<%= f.id %>/send" onsubmit="return confirm('Send this follow-up to <%= creator.business_email %> right now? This cannot be undone.')" style="display:inline">
+                <button class="btn" type="submit" style="padding:6px 16px;font-size:.8rem">Send →</button>
+              </form>
+            <% } %>
+            <button class="copy-btn see-all" type="button" data-target="copy-fu-<%= f.id %>" style="background:none;border:none;cursor:pointer">Copy →</button>
+          </div>
         </div>
         <div class="body"><%= f.body %></div>
         <textarea id="copy-fu-<%= f.id %>" style="position:absolute;left:-9999px;top:-9999px" readonly tabindex="-1" aria-hidden="true"><%= f.body %></textarea>

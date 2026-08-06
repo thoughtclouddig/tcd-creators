@@ -5,6 +5,11 @@
       <a href="/" class="<%= active === 'home' ? 'active' : '' %>">Dashboard</a>
       <a href="/pipeline" class="<%= active === 'pipeline' ? 'active' : '' %>">Pipeline</a>
       <a href="/discover" class="<%= active === 'discover' ? 'active' : '' %>">Discover</a>
+      <% if (gmailConnected) { %>
+        <span class="muted" style="font-size:.75rem;margin-left:14px" title="Connected Gmail account"><%= gmailEmail %></span>
+      <% } else { %>
+        <a href="/auth/google" style="margin-left:14px">Connect Gmail</a>
+      <% } %>
     </nav>
   </div>
 </header>

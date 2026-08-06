@@ -152,6 +152,18 @@ CREATE TABLE IF NOT EXISTS relationship_triggers (
   why_now                   TEXT   -- one sentence tying trigger + angle together for the writer to use
 );
 
+-- Single-operator system, so this only ever holds one connected account -- a new row is
+-- inserted on every (re)connect and the latest one wins, same "latest" pattern used everywhere
+-- else in this schema (proposals, opportunity_scores, ...) rather than an UPSERT.
+CREATE TABLE IF NOT EXISTS gmail_tokens (
+  id             SERIAL PRIMARY KEY,
+  email          TEXT NOT NULL,
+  access_token    TEXT,
+  refresh_token    TEXT,
+  token_expiry      TIMESTAMPTZ,
+  connected_at       TIMESTAMPTZ DEFAULT now()
+);
+
 CREATE INDEX IF NOT EXISTS idx_audits_creator ON audits(creator_id, agent);
 CREATE INDEX IF NOT EXISTS idx_snapshots_creator ON audience_snapshots(creator_id, captured_at);
 CREATE INDEX IF NOT EXISTS idx_outreach_creator ON outreach(creator_id);
@@ -167,3 +179,5 @@ CREATE INDEX IF NOT EXISTS idx_triggers_creator ON relationship_triggers(creator
 ALTER TABLE creators ADD COLUMN IF NOT EXISTS business_email TEXT;
 ALTER TABLE proposals ADD COLUMN IF NOT EXISTS html_content TEXT;
 ALTER TABLE proposals ADD COLUMN IF NOT EXISTS markdown_content TEXT;
+ALTER TABLE outreach ADD COLUMN IF NOT EXISTS sent_at TIMESTAMPTZ;
+ALTER TABLE follow_ups ADD COLUMN IF NOT EXISTS sent_at TIMESTAMPTZ;

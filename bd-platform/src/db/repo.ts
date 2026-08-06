@@ -322,6 +322,14 @@ export async function listOutreach(creatorId: number): Promise<any[]> {
   ]);
 }
 
+export async function getOutreachById(id: number): Promise<any> {
+  return one(`SELECT * FROM outreach WHERE id = $1`, [id]);
+}
+
+export async function markOutreachSent(id: number): Promise<void> {
+  await query(`UPDATE outreach SET status = 'sent', sent_at = now() WHERE id = $1`, [id]);
+}
+
 // ---------- CRM ----------
 
 export async function ensureCrmRow(creatorId: number): Promise<any> {
@@ -402,6 +410,38 @@ export async function dueFollowUps(): Promise<any[]> {
      WHERE f.status = 'scheduled' AND f.scheduled_date <= CURRENT_DATE
      ORDER BY f.scheduled_date ASC`
   );
+}
+
+export async function getFollowUpById(id: number): Promise<any> {
+  return one(`SELECT * FROM follow_ups WHERE id = $1`, [id]);
+}
+
+export async function markFollowUpSent(id: number): Promise<void> {
+  await query(`UPDATE follow_ups SET status = 'sent', sent_at = now() WHERE id = $1`, [id]);
+}
+
+// ---------- Gmail OAuth ----------
+
+export async function saveGmailToken(opts: {
+  email: string;
+  accessToken: string | null;
+  refreshToken: string | null;
+  expiryDate: number | null;
+}): Promise<void> {
+  await query(
+    `INSERT INTO gmail_tokens (email, access_token, refresh_token, token_expiry)
+     VALUES ($1,$2,$3,$4)`,
+    [
+      opts.email,
+      opts.accessToken,
+      opts.refreshToken,
+      opts.expiryDate ? new Date(opts.expiryDate).toISOString() : null,
+    ]
+  );
+}
+
+export async function latestGmailToken(): Promise<any> {
+  return one(`SELECT * FROM gmail_tokens ORDER BY connected_at DESC LIMIT 1`);
 }
 
 // ---------- Pipeline runs ----------

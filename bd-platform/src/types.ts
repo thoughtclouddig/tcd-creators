@@ -11,6 +11,7 @@ export interface Creator {
   spotify_show_id: string | null;
   substack_url: string | null;
   x_handle: string | null;
+  business_email: string | null;
   platform_links_json: string;
   topics_json: string;
   political_alignment: string | null;
