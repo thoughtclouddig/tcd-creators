@@ -43,6 +43,12 @@ import type { AuditAgent, CreatorSeed } from "../types.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 
+// Replit's proxy terminates TLS and forwards over plain HTTP, setting X-Forwarded-Proto:
+// https. Without trust proxy, req.protocol ignores that header and always reads "http" here --
+// which broke the Google OAuth redirect_uri (computed as http://... while Google Cloud Console
+// has https://... registered, a mismatch Google rejects outright).
+app.set("trust proxy", 1);
+
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
