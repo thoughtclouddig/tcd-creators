@@ -163,23 +163,18 @@
   <div class="section">
     <div class="section-head"><h2>Follow-up Drafts</h2></div>
     <p style="color:var(--ink-faint);font-size:.85rem;margin-bottom:20px;margin-top:-10px">Drafted for the dates below, not sent — "scheduled" here just means "not yet marked sent or skipped by you."</p>
-    <table>
-      <thead><tr><th>Day</th><th>Target date</th><th>Status</th><th>Preview</th><th></th></tr></thead>
-      <tbody>
-        <% followUps.forEach(function(f) { %>
-        <tr>
-          <td class="muted">Day <%= f.day_offset %></td>
-          <td class="muted"><%= fmtDateOnly(f.scheduled_date) %></td>
-          <td><span class="badge badge-status"><%= f.status === 'scheduled' ? 'drafted' : f.status %></span></td>
-          <td class="muted"><%= f.body.slice(0, 90) %>…</td>
-          <td>
-            <button class="copy-btn see-all" type="button" data-target="copy-fu-<%= f.id %>" style="background:none;border:none;cursor:pointer">Copy →</button>
-            <textarea id="copy-fu-<%= f.id %>" style="position:absolute;left:-9999px;top:-9999px" readonly tabindex="-1" aria-hidden="true"><%= f.body %></textarea>
-          </td>
-        </tr>
-        <% }) %>
-      </tbody>
-    </table>
+    <div class="card">
+      <% followUps.forEach(function(f) { %>
+      <div class="outreach-block">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+          <span class="chan">Day <%= f.day_offset %> · <%= fmtDateOnly(f.scheduled_date) %> · <span class="badge badge-status"><%= f.status === 'scheduled' ? 'drafted' : f.status %></span></span>
+          <button class="copy-btn see-all" type="button" data-target="copy-fu-<%= f.id %>" style="background:none;border:none;cursor:pointer">Copy →</button>
+        </div>
+        <div class="body"><%= f.body %></div>
+        <textarea id="copy-fu-<%= f.id %>" style="position:absolute;left:-9999px;top:-9999px" readonly tabindex="-1" aria-hidden="true"><%= f.body %></textarea>
+      </div>
+      <% }) %>
+    </div>
   </div>
   <% } %>
 
