@@ -12,7 +12,13 @@
  * it needs to react to what they actually said; that's a manual "generate reply" action once
  * inbound replies are tracked, not something to pre-write blind.)
  */
-import { getCreator, latestOpportunityScore, latestRelationshipTrigger, saveFollowUp } from "../db/repo.js";
+import {
+  deleteFollowUps,
+  getCreator,
+  latestOpportunityScore,
+  latestRelationshipTrigger,
+  saveFollowUp,
+} from "../db/repo.js";
 import { textCall } from "../lib/claude.js";
 import {
   PROHIBITED_PHRASES,
@@ -56,6 +62,7 @@ export async function runFollowUpScheduler(
 
   const outcomes: FollowUpOutcome[] = [];
 
+  await deleteFollowUps(creatorId);
   for (const stage of STAGES) {
     const body = await textCall({
       system: `

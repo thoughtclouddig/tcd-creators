@@ -311,6 +311,11 @@ export async function saveOutreach(
   );
 }
 
+/** Regenerating outreach should replace the prior drafts, not stack alongside them. */
+export async function deleteOutreach(creatorId: number): Promise<void> {
+  await query(`DELETE FROM outreach WHERE creator_id = $1`, [creatorId]);
+}
+
 export async function listOutreach(creatorId: number): Promise<any[]> {
   return query(`SELECT * FROM outreach WHERE creator_id = $1 ORDER BY created_at DESC`, [
     creatorId,
@@ -376,6 +381,11 @@ export async function saveFollowUp(
      VALUES ($1,$2,$3,$4,$5)`,
     [creatorId, dayOffset, scheduledDate, channel, body]
   );
+}
+
+/** Regenerating outreach reschedules follow-ups from scratch -- clear the stale ones first. */
+export async function deleteFollowUps(creatorId: number): Promise<void> {
+  await query(`DELETE FROM follow_ups WHERE creator_id = $1`, [creatorId]);
 }
 
 export async function listFollowUps(creatorId: number): Promise<any[]> {

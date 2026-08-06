@@ -14,6 +14,7 @@
  * the actual generated text, not just more instructions hoping the model complies.
  */
 import {
+  deleteOutreach,
   getCreator,
   latestAudit,
   latestOpportunityScore,
@@ -265,6 +266,7 @@ Return the edited version of all four fields.
 
   const references = [...payload.specific_references, ...log];
 
+  await deleteOutreach(creatorId);
   await saveOutreach(creatorId, "email", current.email_body, {
     subject: current.email_subject,
     basedOn: references,
