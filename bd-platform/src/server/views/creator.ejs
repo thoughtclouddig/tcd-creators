@@ -147,6 +147,16 @@
       <% }) %>
     </div>
   </div>
+  <% } else if (score) { %>
+  <div class="section">
+    <div class="section-head"><h2>Outreach Drafts</h2></div>
+    <div class="card">
+      <p style="margin-bottom:16px;color:var(--ink-soft)">No outreach drafts yet for this creator — the last attempt may have failed. Generate them now.</p>
+      <form method="POST" action="/creators/<%= creator.id %>/regenerate-outreach">
+        <button class="btn" type="submit">Generate Outreach →</button>
+      </form>
+    </div>
+  </div>
   <% } %>
 
   <% if (followUps.length) { %>
