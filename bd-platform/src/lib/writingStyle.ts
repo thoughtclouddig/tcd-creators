@@ -127,12 +127,16 @@ function titleFingerprint(title: string): string[] {
  * phrase list can catch since referencing a second real title isn't itself a banned word.
  */
 export function scanForViolations(
-  fields: Record<string, string>,
+  fields: Record<string, unknown>,
   titles: string[] = []
 ): StyleViolation[] {
   const violations: StyleViolation[] = [];
-  for (const [field, text] of Object.entries(fields)) {
-    if (!text) continue;
+  for (const [field, raw] of Object.entries(fields)) {
+    if (!raw) continue;
+    // Structured-output calls type fields as strings, but nothing enforces that at runtime --
+    // a model that returns a bare number for a short field (e.g. a subject line) would crash
+    // every regex/string method below without this coercion.
+    const text = typeof raw === "string" ? raw : String(raw);
 
     for (const term of HARD_BANNED_TERMS) {
       const re = new RegExp(`\\b${term.replace(/\s+/g, "\\s+")}\\b`, "i");
